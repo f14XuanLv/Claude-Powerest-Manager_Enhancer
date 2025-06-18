@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         ClaudePowerestManager&Enhancer
-// @name:zh-CN   Claude神级增强脚本
+// @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
 // @version      1.1.2
 // @description  [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
