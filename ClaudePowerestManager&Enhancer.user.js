@@ -3,17 +3,15 @@
 // @name:zh-CN   Claude 超强管理器与增强器
 // @namespace    http://tampermonkey.net/
 // @version      1.1.1
-// @description  [管理器]右下角面板一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
+// @description  [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
+// @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
 // @author       f14xuanlv
 // @license      MIT
 // @homepageURL  https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer
 // @supportURL   https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/issues
-// @updateURL    https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/raw/main/ClaudePowerestManager&Enhancer.user.js
-// @downloadURL  https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/raw/main/ClaudePowerestManager&Enhancer.user.js
 // @match        https://claude.ai/*
 // @include      /^https:\/\/.*\.fuclaude\.[a-z]{3}\/.*$/
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=claude.ai
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
