@@ -12,6 +12,7 @@
 // @supportURL   https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/issues
 // @match        https://claude.ai/*
 // @include      /^https:\/\/.*\.fuclaude\.[a-z]{3}\/.*$/
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=claude.ai
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
