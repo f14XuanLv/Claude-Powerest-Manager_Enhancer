@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude 超强管理器与增强器
 // @namespace    http://tampermonkey.net/
-// @version      1.1.1
+// @version      1.1.2
 // @description  [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.1]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.2]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -391,7 +391,7 @@
                             attachmentsHTML += `<li>- ${file.file_name} <span class="cpm-attachment-source">[Source: convert_document]</span> <span class="cpm-attachment-details">[ID: ${file.id}] [Preview: "${escapedPreview}..."]</span></li>`;
 
                         } else {
-                            // v1.1.1: 增强URL构造逻辑以支持blob类型
+                            // 增强URL构造逻辑以支持blob类型
                             let fullUrl = '';
                             if (file.document_asset?.url) { // 优先使用显式URL
                                 fullUrl = baseUrl + file.document_asset.url;
@@ -492,7 +492,7 @@
                         if (file.type === 'text') {
                              fileContent = new Blob([file.content || ""], { type: 'text/plain;charset=utf-8' });
                         } else {
-                            // v1.1.1: 增强URL构造逻辑以支持blob类型
+                            // 增强URL构造逻辑以支持blob类型
                             let downloadUrl;
                             if (file.document_asset?.url) { // 优先使用显式URL
                                 downloadUrl = file.document_asset.url;
