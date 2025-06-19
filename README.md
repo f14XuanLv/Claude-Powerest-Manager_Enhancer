@@ -54,12 +54,12 @@
 此模块直接在 Claude 的聊天输入框工具栏注入新的功能按钮，实时增强您的聊天体验。
 
 -   **🌿 从任意消息分支 (Branch from any message)**:
-    -   点击工具栏新增的 <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxsaW5lIHgxPSI2IiB5MT0iMyIgeDI9IjYiIHkyPSIxNSI+PC9saW5lPjxjaXJjbGUgY3g9IjE4IiBjeT0iNiIgcj0iMyI+PC9jaXJjbGU+PGNpcmNsZSBjeD0iNiIgY3k9IjE4IiByPSIzIj48L2NpcmNsZT48cGF0aCBkPSJNMTggOWE5IDkgMCAwIDEtOSA5Ij48L3BhdGg+PC9zdmc+" alt="树状图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮。
+    -   点击工具栏新增的 <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-tree.svg" alt="树状图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮。
     -   在弹出的对话树视图中，选择历史上任意一条 Claude 的回复作为新的分支点。
     -   您发送的下一条消息将从该节点继续，完美实现从任意历史点““复活””对话或探索不同可能性的需求。
 
 -   **🚀 强制 PDF 深度解析 (Force PDF Deep Analysis)**:
-    -   点击工具栏新增的 <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0ibm9uZSIgdmlld0JveD0iMCAwIDI0IDI0IiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTE5LjUgMTQuMjV2LTIuNjI1YTMuMzc1IDMuMzc1IDAgMCAwLTMuMzc1LTMuMzc1aC0xLjVBMS4xMjUgMS4xMjUgMCAwIDEgMTMuNSA3LjEyNXYtMS41YTMuMzc1IDMuMzc1IDAgMCAwLTMuMzc1LTMuMzc1SDguMjVtNi43NSAxMi0zLTMmIzEwOyAgICAgICAgICAgICAgICAgIG0wIDAtMyAzbTMtM3Y2bS0xLjUtMTVINS42MjVjLS42MjEgMC0xLjEyNS41MDQtMS4xMjUgMS4xMjV2MTcuMjVjMCAuNjIxLjUwNCAxLjEyNSAxLjEyNSAxLjEyNWgxMi43NWMuNjIxIDAgMS4xMjUtLjUwNCAxLjEyNS0xLjEyNVYxMS4yNWE5IDkgMCAwIDAtOS05WiIgLz48L3N2Zz4=" alt="附件增强图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮，可以开启此模式。
+    -   点击工具栏新增的 <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-attachment-power.svg" alt="附件增强图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮，可以开启此模式。
     -   **主要用途**: 对于普通（免费）账户，此功能可以强制 Claude 使用更强大的文档解析路径来处理 PDF 文件，从而获得与 Pro/Team 账户类似的深度解析和内容提取效果。
     -   **工作原理**: 开启后，您上传的 PDF 会被脚本拦截，并通过一个特殊的后台 API 路径进行处理。处理完成的文件会暂存在一个浮动面板中，当您发送消息时，这些文件会自动附加到您的消息中。
     -   **注意**: 此功能对 Pro/Team 账户无效，因为它们默认已使用最佳解析路径。
@@ -77,8 +77,8 @@
 ## 📖 使用方法
 
 -   **打开管理器**:
-    -   访问 [https://claude.ai](https://claude.ai)。
-    -   或者访问 [https://demo.fuclaude.com](https://demo.fuclaude.com)。
+    -   访问 [https://claude.ai](https://claude.ai)
+    -   或者访问 [https://demo.fuclaude.com](https://demo.fuclaude.com)
     -   在页面右下角找到并点击橙色的 **`Manager`** 按钮。
 
 -   **使用增强功能**:
