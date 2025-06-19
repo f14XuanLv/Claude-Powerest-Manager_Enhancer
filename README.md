@@ -5,7 +5,7 @@
 [![平台](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![支持的网站](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
 [![支持的网站](https://img.shields.io/badge/Site-fuclaude.com-blue.svg)](https://demo.fuclaude.com)
-[![作者](https://img.shields.io/badge/Author-f14xuanlv-lightgrey.svg)](https://github.com/f14XuanLv)
+[![作者](https://img.shields.io/badge/Author-f14xuanlv-purple.svg)](https://github.com/f14XuanLv)
 
 [English Version](./README.en.md) | **中文说明**
 
