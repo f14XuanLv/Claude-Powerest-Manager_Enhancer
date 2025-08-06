@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.3
+// @version      1.1.4
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -16,13 +16,13 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @run-at       document-start
+// @run-at       document-idle
 // ==/UserScript==
 
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.3]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.4]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -785,7 +785,14 @@
                         <symbol id="cpm-icon-save" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
                         <symbol id="cpm-icon-cancel" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></symbol>
                         <symbol id="cpm-icon-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></symbol>
-                        <symbol id="cpm-icon-studio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="3" x2="6" y2="15" stroke-linecap="round"></line><circle cx="16" cy="8" r="2"></circle><circle cx="6" cy="18" r="2"></circle><path d="M16 11a8 8 0 0 1 -8 7" stroke-linecap="round"></path><g transform="translate(14.5, 14.5) scale(0.5)" fill="currentColor" stroke="none"><path fill-rule="evenodd" d="M6.455 1.45A.5.5 0 0 1 6.952 1h2.096a.5.5 0 0 1 .497.45l.186 1.858a4.996 4.996 0 0 1 1.466.848l1.703-.769a.5.5 0 0 1 .639.206l1.047 1.814a.5.5 0 0 1-.14.656l-1.517 1.09a5.026 5.026 0 0 1 0 1.694l1.516 1.09a.5.5 0 0 1 .141.656l-1.047 1.814a.5.5 0 0 1-.639.206l-1.703-.768c-.433.36-.928.649-1.466.847l-.186 1.858a.5.5 0 0 1-.497.45H6.952a.5.5 0 0 1-.497-.45l-.186-1.858a4.993 4.993 0 0 1-1.466-.848l-1.703.769a.5.5 0 0 1-.639-.206l-1.047-1.814a.5.5 0 0 1 .14-.656l1.517-1.09a5.033 5.033 0 0 1 0-1.694l-1.516-1.09a.5.5 0 0 1-.141-.656L2.46 3.593a.5.5 0 0 1 .639-.206l1.703.769c.433-.36.928.65 1.466-.848l.186-1.858Zm-.177 7.567-.022-.037a2 2 0 0 1 3.466-1.997l.022.037a2 2 0 0 1-3.466 1.997Z" clip-rule="evenodd" /></g></symbol>
+                        <symbol id="cpm-icon-tree-studio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="3" x2="6" y2="15" stroke-linecap="round"></line><circle cx="16" cy="8" r="2"></circle><circle cx="6" cy="18" r="2"></circle><path d="M16 11a8 8 0 0 1 -8 7" stroke-linecap="round"></path><g transform="translate(14.5, 14.5) scale(0.5)" fill="currentColor" stroke="none"><path fill-rule="evenodd" d="M6.455 1.45A.5.5 0 0 1 6.952 1h2.096a.5.5 0 0 1 .497.45l.186 1.858a4.996 4.996 0 0 1 1.466.848l1.703-.769a.5.5 0 0 1 .639.206l1.047 1.814a.5.5 0 0 1-.14.656l-1.517 1.09a5.026 5.026 0 0 1 0 1.694l1.516 1.09a.5.5 0 0 1 .141.656l-1.047 1.814a.5.5 0 0 1-.639.206l-1.703-.768c-.433.36-.928.649-1.466.847l-.186 1.858a.5.5 0 0 1-.497.45H6.952a.5.5 0 0 1-.497-.45l-.186-1.858a4.993 4.993 0 0 1-1.466-.848l-1.703.769a.5.5 0 0 1-.639-.206l-1.047-1.814a.5.5 0 0 1 .14-.656l1.517-1.09a5.033 5.033 0 0 1 0-1.694l-1.516-1.09a.5.5 0 0 1-.141-.656L2.46 3.593a.5.5 0 0 1 .639-.206l1.703.769c.433-.36.928.65 1.466-.848l.186-1.858Zm-.177 7.567-.022-.037a2 2 0 0 1 3.466-1.997l.022.037a2 2 0 0 1-3.466 1.997Z" clip-rule="evenodd" /></g></symbol>
+                        <symbol id="cpm-icon-attachment" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></symbol>
+                        <symbol id="cpm-icon-pdf-mode-off" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></symbol>
+                        <symbol id="cpm-icon-pdf-mode-on" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></symbol>
+                        <symbol id="cpm-icon-help" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" /></symbol>
+                        <symbol id="cpm-icon-close" viewBox="0 0 256 256" fill="currentColor"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"></path></symbol>
+                        <symbol id="cpm-icon-batch-export-original" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /><text x="2" y="7" font-family="Arial, Helvetica, sans-serif" font-size="5" fill="currentColor" stroke="none">bat</text></symbol>
+                        <symbol id="cpm-icon-batch-export-custom" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /><text x="2" y="7" font-family="Arial, Helvetica, sans-serif" font-size="5" fill="currentColor" stroke="none">bat</text><g transform="translate(16, 3) scale(0.5)" fill="currentColor" stroke="none"><path fill-rule="evenodd" d="M6.455 1.45A.5.5 0 0 1 6.952 1h2.096a.5.5 0 0 1 .497.45l.186 1.858a4.996 4.996 0 0 1 1.466.848l1.703-.769a.5.5 0 0 1 .639.206l1.047 1.814a.5.5 0 0 1-.14.656l-1.517 1.09a5.026 5.026 0 0 1 0 1.694l1.516 1.09a.5.5 0 0 1 .141.656l-1.047 1.814a.5.5 0 0 1-.639.206l-1.703-.768c-.433.36-.928.649-1.466.847l-.186 1.858a.5.5 0 0 1-.497.45H6.952a.5.5 0 0 1-.497-.45l-.186-1.858a4.993 4.993 0 0 1-1.466-.848l-1.703.769a.5.5 0 0 1-.639-.206l-1.047-1.814a.5.5 0 0 1 .14-.656l1.517-1.09a5.033 5.033 0 0 1 0-1.694l-1.516-1.09a.5.5 0 0 1-.141-.656L2.46 3.593a.5.5 0 0 1 .639-.206l1.703.769c.433-.36.928.65 1.466-.848l.186-1.858Zm-.177 7.567-.022-.037a2 2 0 0 1 3.466-1.997l.022.037a2 2 0 0 1-3.466 1.997Z" clip-rule="evenodd" /></g></symbol>
                     </defs>
                 </svg>
             `;
@@ -804,7 +811,7 @@
                     <h2>Manager</h2>
                     <div class="cpm-header-actions">
                         <a href="${Config.URL_GITHUB_REPO}" target="_blank" class="cpm-icon-btn" title="查看 GitHub 仓库"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-github"></use></svg></a>
-                        <a href="${Config.URL_STUDIO_REPO}" target="_blank" class="cpm-icon-btn" title="了解下一个项目: claude-dialog-tree-studio"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-studio"></use></svg></a>
+                        <a href="${Config.URL_STUDIO_REPO}" target="_blank" class="cpm-icon-btn" title="了解下一个项目: claude-dialog-tree-studio"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-tree-studio"></use></svg></a>
                         <button id="cpm-open-settings-button" title="设置" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-settings"></use></svg></button>
                         <button class="cpm-close-button cpm-icon-btn">×</button>
                     </div>
@@ -816,7 +823,7 @@
                     <div class="cpm-toolbar-group"><label>筛选:</label><select id="cpm-filter-select"><option value="all">显示全部</option><option value="starred">仅显示收藏</option><option value="unstarred">隐藏收藏</option><option value="ascii_only">仅显示纯ASCII标题</option><option value="non_ascii">不显示纯ASCII标题</option></select></div>
                     <button class="cpm-icon-btn" id="cpm-refresh" title="刷新列表"><svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg></button>
                 </div>
-                <div class="cpm-actions"><button class="cpm-action-btn" id="cpm-batch-star">批量收藏</button><button class="cpm-action-btn" id="cpm-batch-unstar">批量取消收藏</button><button class="cpm-action-btn" id="cpm-batch-rename">批量自动重命名</button><button class="cpm-action-btn cpm-danger-btn" id="cpm-batch-delete">批量删除</button></div>
+                <div class="cpm-actions"><button class="cpm-action-btn" id="cpm-batch-star">批量收藏</button><button class="cpm-action-btn" id="cpm-batch-unstar">批量取消收藏</button><button class="cpm-action-btn" id="cpm-batch-rename">批量自动重命名</button><button class="cpm-action-btn cpm-danger-btn" id="cpm-batch-delete">批量删除</button><span style="flex-grow: 1;"></span><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-original" title="批量原始JSON导出"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-original"></use></svg></button><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-custom" title="批量自定义JSON导出"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-custom"></use></svg></button></div>
                 <div class="cpm-list-container"><p class="cpm-loading">点击刷新按钮 ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) 加载会话列表。</p></div>
                 <div class="cpm-status-bar">准备就绪。</div>`;
             document.body.appendChild(mainPanel);
@@ -868,6 +875,8 @@
             document.getElementById('cpm-batch-delete').onclick = () => this.handleBatchDelete();
             document.getElementById('cpm-batch-star').onclick = () => this.handleBatchStar(true);
             document.getElementById('cpm-batch-unstar').onclick = () => this.handleBatchStar(false);
+            document.getElementById('cpm-batch-export-original').onclick = () => this.handleBatchExport('original');
+            document.getElementById('cpm-batch-export-custom').onclick = () => this.handleBatchExport('custom');
             document.getElementById('cpm-save-settings-button').onclick = () => this.saveSettings();
             document.getElementById('cpm-tree-close-button').onclick = () => this.hidePanel('cpm-tree-panel');
             document.querySelector('#cpm-main-panel .cpm-list-container').addEventListener('click', (e) => {
@@ -1103,6 +1112,175 @@
         handleBatchRename() { this.handleBatchOperation('重命名', ManagerService.performAutoRename.bind(ManagerService)); },
         handleBatchDelete() { this.handleBatchOperation('删除', ManagerService.performBatchDelete.bind(ManagerService)); },
         handleBatchStar(isStarring) { this.handleBatchOperation(isStarring ? '收藏' : '取消收藏', ManagerService.performBatchStarAction.bind(ManagerService), isStarring); },
+        handleBatchExport(type) {
+            const uuids = this.getSelectedUuids();
+            if (uuids.length === 0) { alert('请选择要导出的会话。'); return; }
+
+            if (type === 'original') {
+                this.performBatchExportOriginal(uuids);
+            } else if (type === 'custom') {
+                this.showBatchExportModal(uuids);
+            }
+        },
+        async performBatchExportOriginal(uuids) {
+            if (typeof window.showDirectoryPicker !== 'function') {
+                alert('您的浏览器不支持 File System Access API。');
+                return;
+            }
+
+            this.updateStatus(`准备批量导出 ${uuids.length} 个会话...`, 'info');
+
+            let rootDirHandle;
+            try {
+                rootDirHandle = await window.showDirectoryPicker();
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    this.updateStatus("用户取消了文件夹选择。", 'info', 3000);
+                    return;
+                }
+                throw err;
+            }
+
+            let successCount = 0;
+            for (let i = 0; i < uuids.length; i++) {
+                const uuid = uuids[i];
+                const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
+                const title = convo ? (convo.name || '无标题') : '加载中...';
+
+                this.updateStatus(`(${i + 1}/${uuids.length}) 正在导出: ${title}`, 'info');
+
+                try {
+                    await this.exportSingleConversation(uuid, rootDirHandle, 'original');
+                    successCount++;
+                } catch (error) {
+                    console.error(`导出会话 ${uuid} 失败:`, error);
+                    this.updateStatus(`导出失败 (${i + 1}/${uuids.length}): ${error.message}`, 'error');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+
+                if (i < uuids.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            this.updateStatus(`批量导出完成: ${successCount}/${uuids.length} 个会话成功导出。`, 'success', 5000);
+        },
+        async exportSingleConversation(uuid, rootDirHandle, type) {
+            const historyData = await ClaudeAPI.getConversationHistory(uuid);
+            const orgInfo = await ClaudeAPI.getOrganizationInfo();
+            if (!orgInfo) throw new Error("缺少导出所需组织信息。");
+
+            const orgName = (orgInfo.name || "unknown_org").replace(/'s Organization$/, "");
+            const safeTitle = (historyData.name || "Untitled").replace(/[<>:"/\\|?*]/g, '_');
+            const pathParts = [`Claude_Exports`, `[${orgName}]`, `[${type === 'original' ? 'Original' : 'Custom'}]_[${safeTitle}]_[${uuid}]`];
+
+            let currentDirHandle = rootDirHandle;
+            for (const part of pathParts) {
+                currentDirHandle = await currentDirHandle.getDirectoryHandle(part, { create: true });
+            }
+            const exportDirHandle = currentDirHandle;
+
+            const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+            const historyFileName = `history-${timestamp}.json`;
+
+            let dataToWrite;
+            if (type === 'original') {
+                dataToWrite = historyData;
+            } else if (type === 'custom') {
+                const settings = this.tempBatchExportSettings;
+                dataToWrite = ManagerService.transformConversation(historyData, settings);
+            }
+
+            const historyFileHandle = await exportDirHandle.getFileHandle(historyFileName, { create: true });
+            const writableHistory = await historyFileHandle.createWritable();
+            await writableHistory.write(JSON.stringify(dataToWrite, null, 2));
+            await writableHistory.close();
+
+            if (type === 'original' || (type === 'custom' && this.tempBatchExportSettings.attachments.mode !== 'none')) {
+                await ManagerService.exportAttachmentsForConversation(historyData, exportDirHandle, () => {});
+            }
+        },
+        showBatchExportModal(uuids) {
+            document.querySelector('.cpm-modal-overlay')?.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'cpm-modal-overlay';
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'cpm-panel cpm-export-modal-content';
+            modalContent.style.display = 'flex';
+            modalContent.innerHTML = `
+                <div class="cpm-header">
+                    <h2>批量自定义导出选项 (${uuids.length} 个会话)</h2>
+                    <button class="cpm-close-button cpm-icon-btn">×</button>
+                </div>
+                <div class="cpm-settings-content">
+                    ${this.createExportSettingsHTML(false)}
+                </div>
+                <div class="cpm-settings-buttons">
+                    <button id="cpm-batch-export-now-btn" class="cpm-btn cpm-primary-btn">开始批量导出</button>
+                </div>
+            `;
+            overlay.appendChild(modalContent);
+            document.body.appendChild(overlay);
+
+            this.loadExportSettings(modalContent);
+            this.setupSubOptionDisabling(modalContent);
+
+            overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+            modalContent.querySelector('.cpm-close-button').onclick = () => overlay.remove();
+            modalContent.querySelector('#cpm-batch-export-now-btn').onclick = async () => {
+                const currentSettings = this.getExportSettings(modalContent);
+                this.tempBatchExportSettings = currentSettings;
+                modalContent.querySelector('#cpm-batch-export-now-btn').disabled = true;
+                modalContent.querySelector('#cpm-batch-export-now-btn').textContent = '准备导出...';
+                overlay.remove();
+                await this.performBatchExportCustom(uuids);
+            };
+        },
+        async performBatchExportCustom(uuids) {
+            if (typeof window.showDirectoryPicker !== 'function') {
+                alert('您的浏览器不支持 File System Access API。');
+                return;
+            }
+
+            this.updateStatus(`准备批量自定义导出 ${uuids.length} 个会话...`, 'info');
+
+            let rootDirHandle;
+            try {
+                rootDirHandle = await window.showDirectoryPicker();
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    this.updateStatus("用户取消了文件夹选择。", 'info', 3000);
+                    return;
+                }
+                throw err;
+            }
+
+            let successCount = 0;
+            for (let i = 0; i < uuids.length; i++) {
+                const uuid = uuids[i];
+                const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
+                const title = convo ? (convo.name || '无标题') : '加载中...';
+
+                this.updateStatus(`(${i + 1}/${uuids.length}) 正在导出: ${title}`, 'info');
+
+                try {
+                    await this.exportSingleConversation(uuid, rootDirHandle, 'custom');
+                    successCount++;
+                } catch (error) {
+                    console.error(`导出会话 ${uuid} 失败:`, error);
+                    this.updateStatus(`导出失败 (${i + 1}/${uuids.length}): ${error.message}`, 'error');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+
+                if (i < uuids.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            delete this.tempBatchExportSettings;
+            this.updateStatus(`批量自定义导出完成: ${successCount}/${uuids.length} 个会话成功导出。`, 'success', 5000);
+        },
 
         createExportSettingsHTML(forSettingsPanel = false) {
             const maybeRemoveTitle = forSettingsPanel ? '' : '<h3 class="cpm-setting-section-title">自定义导出默认设置</h3>';
@@ -1441,7 +1619,7 @@
             wrapperDiv.className = "relative shrink-0";
             wrapperDiv.innerHTML = `
                 <button class="inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100" type="button" id="cpm-attachment-power-btn" aria-label="打开PDF上传设置">
-                    <div class="flex flex-row items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
+                    <div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-attachment"></use></svg></div>
                 </button>
                 <div class="w-[24rem] absolute max-w-[calc(100vw-16px)] bottom-10 block hidden" id="cpm-attachment-power-menu">
                     <div class="relative w-full will-change-transform h-auto overflow-y-auto overscroll-auto flex z-dropdown bg-bg-000 rounded-lg overflow-hidden border-border-300 border-0.5 shadow-diffused shadow-[hsl(var(--always-black)/6%)] flex-col-reverse" style="max-height: 340px;">
@@ -1450,11 +1628,11 @@
                                 <div class="p-1.5 flex flex-col">
                                     <button class="group flex w-full items-center text-left gap-2.5 py-auto px-1.5 text-[0.875rem] text-text-200 rounded-md transition-colors select-none active:!scale-100 hover:bg-bg-200/50 hover:text-text-000 h-[2rem]">
                                         <div id="cpm-dynamic-icon-container" class="group/icon min-w-4 min-h-4 flex items-center justify-center text-text-300 shrink-0 group-hover:text-text-100">
-                                            <div id="cpm-icon-mode-off"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
-                                            <div id="cpm-icon-mode-on" class="hidden"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
+                                            <div id="cpm-icon-mode-off"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-pdf-mode-off"></use></svg></div>
+                                            <div id="cpm-icon-mode-on" class="hidden"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-pdf-mode-on"></use></svg></div>
                                         </div>
                                         <div class="flex flex-col flex-1 min-w-0"><p class="text-[0.9375rem] text-text-300 group-hover:text-text-100">Force PDF Deep Analysis</p></div>
-                                        <div class="flex items-center justify-center text-text-400" title="此功能为普通账户设计，可强制使用高级解析路径。Pro/Team账户原生支持，此开关对其无效。"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" /></svg></div>
+                                        <div class="flex items-center justify-center text-text-400" title="此功能为普通账户设计，可强制使用高级解析路径。Pro/Team账户原生支持，此开关对其无效。"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.5;"><use href="#cpm-icon-help"></use></svg></div>
                                         <div class="group/switch relative select-none cursor-pointer ml-2">
                                             <input class="peer sr-only" type="checkbox" id="cpm-attachment-mode-toggle-switch">
                                             <div class="border-border-300 rounded-full peer:can-focus peer-disabled:opacity-50 bg-bg-500 transition-colors peer-checked:bg-accent-secondary-100" style="width: 28px; height: 16px;"></div>
@@ -1516,7 +1694,7 @@
                     <div class="cpm-attachment-panel-header">
                         <span>PDF深度解析暂存区</span>
                         <button class="cpm-icon-btn cpm-attachment-panel-close-btn" title="关闭并清空所有暂存文件">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"></path></svg>
+                             <svg class="cpm-svg-icon" style="width:16px; height:16px;"><use href="#cpm-icon-close"></use></svg>
                         </button>
                     </div>
                     <div class="cpm-attachment-panel-content"></div>`;
@@ -1574,7 +1752,7 @@
             wrapper.id = `thumbnail-wrapper-${fileInfo.uuid}`;
             wrapper.innerHTML = `
                 <button class="cpm-preview-delete-btn" data-uuid="${fileInfo.uuid}" title="移除文件">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"></path></svg>
+                    <svg class="cpm-svg-icon" style="width:12px; height:12px;"><use href="#cpm-icon-close"></use></svg>
                 </button>
                 <a href="${previewUrl}" target="_blank" rel="noopener noreferrer" class="cpm-preview-thumbnail-link" title="点击预览: ${fileInfo.fileName}">
                     <img src="${fileInfo.thumbnailUrl}" alt="${fileInfo.fileName}">
@@ -1777,6 +1955,10 @@
             --cpm-sender-you-color: #15803d; --cpm-sender-claude-color: #1d4ed8;
             --cpm-branch-hover-bg: rgba(93, 93, 255, 0.2); --cpm-branch-selected-bg: #43a047; --cpm-branch-selected-text: white;
         }
+        body[cpm-theme='light'] #cpm-back-to-main,
+        body[cpm-theme='light'] #cpm-batch-export-now-btn {
+        color: hsl(var(--cpm-text-000)) !important;
+        }
         body[cpm-theme='dark'] {
             --cpm-bg-000: 60 2.1% 18.4%; --cpm-bg-100: 60 2.7% 14.5%; --cpm-bg-200: 30 3.3% 11.8%; --cpm-bg-300: 60 2.6% 7.6%; --cpm-bg-400: 60 3.4% 5.7%; --cpm-bg-500: 60 3.4% 5.7%;
             --cpm-text-000: 48 33.3% 97.1%; --cpm-text-100: 48 33.3% 97.1%; --cpm-text-200: 50 9% 73.7%; --cpm-text-300: 50 9% 73.7%; --cpm-text-400: 48 4.8% 59.2%; --cpm-text-500: 48 4.8% 59.2%;
@@ -1815,6 +1997,9 @@
         .cpm-action-btn:disabled { background-color: hsl(var(--cpm-bg-300)); cursor: not-allowed; opacity: 0.6; }
         .cpm-danger-btn { background-color: hsla(var(--cpm-danger-100), 0.8); border-color: hsl(var(--cpm-danger-100)); }
         .cpm-danger-btn:hover { background-color: hsl(var(--cpm-danger-100)); }
+        .cpm-batch-export-btn { background-color: hsl(var(--cpm-bg-300)); border: 1px solid hsl(var(--cpm-border-300)); padding: 8px; border-radius: 6px; }
+        .cpm-batch-export-btn:hover { background-color: hsl(var(--cpm-bg-400)); border-color: hsl(var(--cpm-accent-secondary-100)); }
+        .cpm-batch-export-btn svg { width: 20px !important; height: 20px !important; }
         #cpm-refresh { margin-left: auto; }
         .cpm-list-container { flex-grow: 1; overflow-y: auto; padding: 0 5px 0 20px; border-top: 1px solid hsl(var(--cpm-border-200)); }
         .cpm-loading, .cpm-error, .cpm-list-container p { color: hsl(var(--cpm-text-300)); text-align: center; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
