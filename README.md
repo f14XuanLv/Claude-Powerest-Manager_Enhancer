@@ -1,6 +1,6 @@
 # Claude 神级拓展增强脚本 (Claude Powerest Manager & Enhancer)
 
-[![版本](https://img.shields.io/badge/Version-1.1.3-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
+[![版本](https://img.shields.io/badge/Version-1.1.4-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
 [![许可证](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
 [![平台](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![支持的网站](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
