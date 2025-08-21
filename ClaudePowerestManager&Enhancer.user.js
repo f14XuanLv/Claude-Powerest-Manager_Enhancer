@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.4
+// @version      1.1.5
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.4]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.5]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -352,7 +352,7 @@
 
                 const nodeElement = document.createElement('div');
                 nodeElement.className = 'cpm-tree-node';
-                nodeElement.style.paddingLeft = `${indentLevel * 20}px`;
+                nodeElement.style.paddingLeft = `${indentLevel * 0}px`;
 
                 const sender = node.sender === 'human' ? 'You' : 'Claude';
                 const retryMarker = node.input_mode === 'retry' ? ' [Retry]' : '';
@@ -2045,14 +2045,14 @@
 
         /* --- TREE VIEW --- */
         .cpm-tree-panel-override { width: 90vw; max-width: 1200px; height: 90vh; }
-        .cpm-tree-container { flex-grow: 1; overflow-y: auto; padding: 20px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; background-color: hsl(var(--cpm-bg-200)); }
-        .cpm-tree-node { margin-bottom: 10px; border-radius: 6px; }
-        .cpm-tree-node-header { margin: 0 0 5px 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 4px; }
+        .cpm-tree-container { flex-grow: 1; overflow-y: auto; overflow-x: auto; padding: 20px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; background-color: hsl(var(--cpm-bg-200)); }
+        .cpm-tree-node { margin-bottom: 10px; border-radius: 6px; min-width: fit-content; }
+        .cpm-tree-node-header { margin: 0 0 5px 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: nowrap; padding: 4px; white-space: nowrap; }
         .cpm-tree-node-id { color: hsl(var(--cpm-text-400)); font-size: 12px; flex-shrink: 0; }
         .cpm-tree-node-sender { font-weight: bold; flex-shrink: 0; }
         .sender-you { color: var(--cpm-sender-you-color); }
         .sender-claude { color: var(--cpm-sender-claude-color); }
-        .cpm-tree-node-preview { color: hsl(var(--cpm-text-200)); word-break: break-all; }
+        .cpm-tree-node-preview { color: hsl(var(--cpm-text-200)); white-space: nowrap; }
         .cpm-tree-attachments { color: hsl(var(--cpm-text-300)); font-size: 12px; padding-left: 20px; }
         .cpm-tree-attachments ul { list-style: none; padding-left: 10px; margin: 5px 0 0 0; }
         .cpm-tree-attachments li { margin-bottom: 4px; }
