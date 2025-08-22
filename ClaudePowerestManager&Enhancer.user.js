@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.5
+// @version      1.1.6
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.5]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.6]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -760,6 +760,7 @@
         currentSearch: '',
         statusTimeout: null,
         isInitialized: false,
+        isManagerButtonVisible: true,
 
         init() {
             if (this.isInitialized) return;
@@ -801,6 +802,7 @@
             const managerButton = document.createElement('button');
             managerButton.id = 'cpm-manager-button';
             managerButton.innerHTML = 'Manager';
+            managerButton.title = 'Tips: Ctrl + M 可以隐藏此按钮';
             document.body.appendChild(managerButton);
 
             const mainPanel = document.createElement('div');
@@ -879,6 +881,14 @@
             document.getElementById('cpm-batch-export-custom').onclick = () => this.handleBatchExport('custom');
             document.getElementById('cpm-save-settings-button').onclick = () => this.saveSettings();
             document.getElementById('cpm-tree-close-button').onclick = () => this.hidePanel('cpm-tree-panel');
+            
+            // 添加Ctrl+M键盘快捷键监听
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'm') {
+                    e.preventDefault();
+                    this.toggleManagerButtonVisibility();
+                }
+            });
             document.querySelector('#cpm-main-panel .cpm-list-container').addEventListener('click', (e) => {
                 const li = e.target.closest('li');
                 if (!li) return;
@@ -1498,6 +1508,15 @@
                 await ManagerService.performExportCustom(uuid, currentSettings, this.updateStatus.bind(this));
                 overlay.remove();
             };
+        },
+        
+        toggleManagerButtonVisibility() {
+            this.isManagerButtonVisible = !this.isManagerButtonVisible;
+            const managerButton = document.getElementById('cpm-manager-button');
+            if (managerButton) {
+                managerButton.style.display = this.isManagerButtonVisible ? 'block' : 'none';
+                console.log(LOG_PREFIX, `Manager按钮已${this.isManagerButtonVisible ? '显示' : '隐藏'} (Ctrl+M)`);
+            }
         }
     };
 

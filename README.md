@@ -1,6 +1,6 @@
 # Claude 神级拓展增强脚本 (Claude Powerest Manager & Enhancer)
 
-[![版本](https://img.shields.io/badge/Version-1.1.5-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
+[![版本](https://img.shields.io/badge/Version-1.1.6-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
 [![许可证](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
 [![平台](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![支持的网站](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
@@ -84,6 +84,9 @@
 -   **使用增强功能**:
     -   进入任意一个聊天界面。
     -   在底部的聊天输入框工具栏（附件上传按钮旁边），您会看到新增的图标按钮，点击即可使用相应功能。
+
+-   **快捷键**:
+    -   **Ctrl+M**: 快速隐藏/显示右下角的 Manager 按钮。在需要更纯净的界面时使用，再次按下即可恢复显示。
 
 
 ---
