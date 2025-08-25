@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.6
+// @version      1.1.7
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.6]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.7]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -1655,7 +1655,7 @@
                                         <div class="group/switch relative select-none cursor-pointer ml-2">
                                             <input class="peer sr-only" type="checkbox" id="cpm-attachment-mode-toggle-switch">
                                             <div class="border-border-300 rounded-full peer:can-focus peer-disabled:opacity-50 bg-bg-500 transition-colors peer-checked:bg-accent-secondary-100" style="width: 28px; height: 16px;"></div>
-                                            <div class="absolute start-[2px] top-[2px] rounded-full transition-all peer-checked:translate-x-full rtl:peer-checked:-translate-x-full group-hover/switch:opacity-80 bg-white transition" style="height: 12px; width: 12px;"></div>
+                                            <div id="cpm-attachment-mode-toggle-slider" class="absolute start-[2px] top-[2px] rounded-full transition-all group-hover/switch:opacity-80 bg-white transition" style="height: 12px; width: 12px;"></div>
                                         </div>
                                     </button>
                                 </div>
@@ -1681,20 +1681,27 @@
             const isInitialForceMode = (this.state.forceUploadMode === 'force');
             toggleSwitch.checked = isInitialForceMode;
             this.updateSubPanelIcon(isInitialForceMode);
+            const slider = document.getElementById('cpm-attachment-mode-toggle-slider');
+            if (slider) {
+                slider.style.transform = isInitialForceMode ? 'translateX(12px)' : '';
+            }
 
             triggerBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
 
             const buttonInsideMenu = menu.querySelector('button.group');
             buttonInsideMenu.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                toggleSwitch.checked = !toggleSwitch.checked;
-                toggleSwitch.dispatchEvent(new Event('change'));
-            });
+                e.preventDefault();
+                e.stopPropagation();
 
-            toggleSwitch.addEventListener('change', () => {
+                toggleSwitch.checked = !toggleSwitch.checked;
                 const isForceMode = toggleSwitch.checked;
+
                 this.state.forceUploadMode = isForceMode ? 'force' : 'default';
                 this.updateSubPanelIcon(isForceMode);
+                const slider = document.getElementById('cpm-attachment-mode-toggle-slider');
+                if (slider) {
+                    slider.style.transform = isForceMode ? 'translateX(12px)' : '';
+                }
                 console.log(LOG_PREFIX, `强制PDF深度解析模式已: ${isForceMode ? '开启' : '关闭'}`);
             });
             document.addEventListener('click', (e) => {
