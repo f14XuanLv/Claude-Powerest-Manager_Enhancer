@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.7
+// @version      1.1.8
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.7]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.8]:";
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -310,11 +310,42 @@
 
             function assignIdsRecursive(nodeUuid, prefix) {
                 if (!nodes[nodeUuid]) return;
-                nodes[nodeUuid].tree_id = prefix;
+                const node = nodes[nodeUuid];
                 const children = childrenMap[nodeUuid] || [];
+                
+                // 检测脏数据：human节点没有子节点
+                const isDirtyData = node.sender === 'human' && children.length === 0;
+                
+                if (isDirtyData) {
+                    // 为脏数据节点生成特殊标识
+                    const dirtyIndex = getDirtyNodeIndex(nodeUuid, childrenMap, nodes);
+                    node.tree_id = `${prefix}-F${dirtyIndex}`;
+                } else {
+                    node.tree_id = prefix;
+                }
+                
                 children.forEach((childUuid, index) => {
-                    assignIdsRecursive(childUuid, `${prefix}-${index}`);
+                    assignIdsRecursive(childUuid, `${node.tree_id}-${index}`);
                 });
+            }
+            
+            function getDirtyNodeIndex(nodeUuid, childrenMap, nodes) {
+                const parentUuid = nodes[nodeUuid].parent_message_uuid || Config.INITIAL_PARENT_UUID;
+                const siblings = childrenMap[parentUuid] || [];
+                let dirtyCount = 1;
+                
+                for (const siblingUuid of siblings) {
+                    const sibling = nodes[siblingUuid];
+                    if (siblingUuid === nodeUuid) break;
+                    
+                    // 检查前面的兄弟节点是否也是脏数据
+                    const siblingChildren = childrenMap[siblingUuid] || [];
+                    if (sibling.sender === 'human' && siblingChildren.length === 0) {
+                        dirtyCount++;
+                    }
+                }
+                
+                return dirtyCount;
             }
 
             const rootNodes = childrenMap[Config.INITIAL_PARENT_UUID] || [];
@@ -411,10 +442,15 @@
                     attachmentsHTML += '</ul></div>';
                 }
 
+                // 检测是否为脏数据节点
+                const isDirtyNode = node.tree_id && node.tree_id.includes('-F');
+                const dirtyClass = isDirtyNode ? ' cpm-dirty-node' : '';
+                const dirtyLabel = isDirtyNode ? ' [脏数据]' : '';
+                
                 nodeElement.innerHTML = `
-                    <div class="cpm-tree-node-header">
+                    <div class="cpm-tree-node-header${dirtyClass}">
                         <span class="cpm-tree-node-id">[${node.tree_id}]</span>
-                        <span class="cpm-tree-node-sender sender-${sender.toLowerCase()}">${sender}${retryMarker}:</span>
+                        <span class="cpm-tree-node-sender sender-${sender.toLowerCase()}">${sender}${retryMarker}${dirtyLabel}:</span>
                         <span class="cpm-tree-node-preview">${preview || '[仅包含附件或工具使用]'}</span>
                     </div>
                     ${attachmentsHTML}`;
@@ -450,9 +486,9 @@
             const { nodes } = SharedLogic.buildConversationTree(historyData.chat_messages);
             const allAttachments = [];
             for (const node of Object.values(nodes)) {
-                (node.attachments || []).forEach(file => allAttachments.push({ type: 'text', content: file.extracted_content, node_id: node.tree_id, ...file }));
-                (node.files || []).forEach(file => allAttachments.push({ type: 'binary', node_id: node.tree_id, ...file }));
-                (node.files_v2 || []).forEach(file => allAttachments.push({ type: 'binary', node_id: node.tree_id, ...file }));
+                (node.attachments || []).forEach(file => allAttachments.push({ type: 'text', content: file.extracted_content, ...file }));
+                (node.files || []).forEach(file => allAttachments.push({ type: 'binary', ...file }));
+                (node.files_v2 || []).forEach(file => allAttachments.push({ type: 'binary', ...file }));
             }
 
             if (allAttachments.length > 0) {
@@ -467,7 +503,7 @@
                     const extension = file.file_name ? (file.file_name.includes('.') ? file.file_name.substring(file.file_name.lastIndexOf('.')) : '') : '';
 
                     if (file.type === 'text') {
-                        fileName = `${baseName}_[${file.id || 'no-id'}]_[${file.node_id || 'no-node'}].txt`;
+                        fileName = `${baseName}_[${file.id || 'no-id'}].txt`;
                     } else if (file.type === 'binary' && file.file_uuid) {
                         fileName = `${baseName}_[${file.file_uuid}]${extension}`;
                     }
@@ -2086,6 +2122,10 @@
         .cpm-attachment-details { color: hsl(var(--cpm-text-400)); }
         .cpm-attachment-url { color: hsl(var(--cpm-accent-secondary-100)); text-decoration: none; }
         .cpm-attachment-url:hover { text-decoration: underline; }
+        
+        /* --- DIRTY DATA NODE STYLES --- */
+        .cpm-dirty-node .cpm-tree-node-id { color: hsl(var(--cpm-danger-000)) !important; }
+        .cpm-dirty-node .cpm-tree-node-sender { color: hsl(var(--cpm-danger-000)) !important; }
 
         /* --- ENHANCER-SPECIFIC STYLES --- */
         #cpm-branch-status-indicator { background-color: var(--cpm-branch-selected-bg); color: var(--cpm-branch-selected-text); padding: 2px 8px; font-size: 12px; border-radius: 12px; margin-left: 8px; font-weight: 500; animation: cpm-fadeIn 0.3s ease; }

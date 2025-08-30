@@ -1,6 +1,6 @@
 # Claude 神级拓展增强脚本 (Claude Powerest Manager & Enhancer)
 
-[![版本](https://img.shields.io/badge/Version-1.1.7-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
+[![版本](https://img.shields.io/badge/Version-1.1.8-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
 [![许可证](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
 [![平台](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![支持的网站](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
@@ -47,7 +47,7 @@
 
 -   **🌳 单个对话操作**:
     -   **手动重命名**: 直接在管理器中修改任何对话的标题。
-    -   **对话树预览**: 以树状结构清晰地展示对话的所有分支，包括每一次重试（Retry）产生的分支，方便您理解对话的完整脉络。
+    -   **对话树预览**: 以树状结构清晰地展示对话的所有分支，包括每一次重试（Retry）产生的分支，方便您理解对话的完整脉络。支持自动检测并标识"脏数据"（因网络错误等原因未收到 Claude 回复的用户消息节点）。
 
 ### 2. 聊天增强器 (Enhancer)
 
