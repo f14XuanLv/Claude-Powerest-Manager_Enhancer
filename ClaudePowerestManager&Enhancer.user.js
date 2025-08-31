@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.8
+// @version      1.1.9
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
 // @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.8]:";
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.9]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -311,42 +311,30 @@
             function assignIdsRecursive(nodeUuid, prefix) {
                 if (!nodes[nodeUuid]) return;
                 const node = nodes[nodeUuid];
+                node.tree_id = prefix;
+                
                 const children = childrenMap[nodeUuid] || [];
+                let normalIndex = 0;
+                let dirtyCount = 1;
                 
-                // 检测脏数据：human节点没有子节点
-                const isDirtyData = node.sender === 'human' && children.length === 0;
-                
-                if (isDirtyData) {
-                    // 为脏数据节点生成特殊标识
-                    const dirtyIndex = getDirtyNodeIndex(nodeUuid, childrenMap, nodes);
-                    node.tree_id = `${prefix}-F${dirtyIndex}`;
-                } else {
-                    node.tree_id = prefix;
-                }
-                
-                children.forEach((childUuid, index) => {
-                    assignIdsRecursive(childUuid, `${node.tree_id}-${index}`);
+                children.forEach((childUuid) => {
+                    const childNode = nodes[childUuid];
+                    if (!childNode) return;
+                    
+                    // 检测脏数据：human节点没有子节点
+                    const childChildren = childrenMap[childUuid] || [];
+                    const isDirtyData = childNode.sender === 'human' && childChildren.length === 0;
+                    
+                    if (isDirtyData) {
+                        assignIdsRecursive(childUuid, `${prefix}-F${dirtyCount}`);
+                        dirtyCount++;
+                    } else {
+                        assignIdsRecursive(childUuid, `${prefix}-${normalIndex}`);
+                        normalIndex++;
+                    }
                 });
             }
             
-            function getDirtyNodeIndex(nodeUuid, childrenMap, nodes) {
-                const parentUuid = nodes[nodeUuid].parent_message_uuid || Config.INITIAL_PARENT_UUID;
-                const siblings = childrenMap[parentUuid] || [];
-                let dirtyCount = 1;
-                
-                for (const siblingUuid of siblings) {
-                    const sibling = nodes[siblingUuid];
-                    if (siblingUuid === nodeUuid) break;
-                    
-                    // 检查前面的兄弟节点是否也是脏数据
-                    const siblingChildren = childrenMap[siblingUuid] || [];
-                    if (sibling.sender === 'human' && siblingChildren.length === 0) {
-                        dirtyCount++;
-                    }
-                }
-                
-                return dirtyCount;
-            }
 
             const rootNodes = childrenMap[Config.INITIAL_PARENT_UUID] || [];
             rootNodes.forEach((rootUuid, index) => {
