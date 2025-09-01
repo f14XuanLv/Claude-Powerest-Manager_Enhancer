@@ -2,10 +2,10 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.1.9
-// @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
-// @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、强制PDF深度解析等。
-// @description:en [Manager] Adds a button in the bottom-right corner to open a central panel for searching, filtering, and batch-managing all chats. Features a powerful exporter for raw/custom JSON with attachments. [Enhancer] Injects new buttons into the chat prompt toolbar for advanced real-time actions like branching from any message and forcing deep PDF analysis.
+// @version      1.2.0
+// @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
+// @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
+// @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
 // @author       f14xuanlv
 // @license      MIT
 // @homepageURL  https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.1.9]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.0]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -50,7 +50,11 @@
         ATTACHMENT_PANEL_ID: 'cpm-attachment-preview-panel',
         EXPORT_MODAL_ID: 'cpm-export-modal',
         URL_GITHUB_REPO: 'https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer',
-        URL_STUDIO_REPO: 'https://github.com/f14XuanLv/claude-dialog-tree-studio'
+        URL_STUDIO_REPO: 'https://github.com/f14XuanLv/claude-dialog-tree-studio',
+        maxPreviewLength: 16,
+        refreshInterval: 150,
+        topMargin: 200,
+        STORAGE_KEY: 'cpm-ln-panel-state'
     };
 
     // =========================================================================
@@ -200,11 +204,66 @@
     };
 
     // =========================================================================
-    // 4. API 层 (共享)
+    // 4. 存储管理器和文本处理工具
+    // =========================================================================
+    const StorageManager = {
+        getPanelState() {
+            try {
+                const state = localStorage.getItem(Config.STORAGE_KEY);
+                return state === 'true';
+            } catch (e) {
+                return false;
+            }
+        },
+        setPanelState(isOpen) {
+            try {
+                localStorage.setItem(Config.STORAGE_KEY, String(isOpen));
+            } catch (e) {
+                // 忽略存储错误
+            }
+        }
+    };
+
+    const TextUtils = {
+        getPreview(element, maxLength = Config.maxPreviewLength) {
+            if (!element) return '';
+
+            const text = (element.innerText || element.textContent || '')
+                .replace(/\s+/g, ' ').trim();
+            if (!text) return '';
+
+            let width = 0, result = '';
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const charWidth = /[\u4e00-\u9fa5]/.test(char) ? 2 : 1;
+                if (width + charWidth > maxLength) {
+                    result += '…';
+                    break;
+                }
+                result += char;
+                width += charWidth;
+            }
+            return result || text.slice(0, maxLength);
+        },
+        escapeHtml(str) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+            return (str || '').replace(/[&<>"']/g, m => map[m]);
+        },
+        escapeAttr(str) {
+            return this.escapeHtml(str).replace(/"/g, '&quot;');
+        }
+    };
+
+    // =========================================================================
+    // 5. API 层 (共享)
     // =========================================================================
     const ClaudeAPI = {
         orgUuid: null,
         orgInfo: null,
+        conversationTree: null,
+        currentLinearBranch: null,
+        currentConversationUuid: null,
+        isInitialized: false,
         async getOrganizationInfo() {
             if (this.orgInfo) return this.orgInfo;
             try {
@@ -238,7 +297,99 @@
             const url = `/api/organizations/${orgId}/chat_conversations/${convUuid}?tree=True&rendering_mode=messages&render_all_tools=true`;
             const response = await fetch(url);
             if (!response.ok) throw new Error(`获取历史记录失败: ${response.status}`);
-            return response.json();
+            const data = await response.json();
+
+            // 标记脏数据：标记没有 Claude 回复的孤儿用户节点
+            data.chat_messages = this.markDirtyMessages(data.chat_messages);
+
+            this.conversationTree = this.buildConversationTree(data.chat_messages);
+            this.updateCurrentLinearBranch();
+            return data;
+        },
+
+        markDirtyMessages(messages) {
+            // 按 index 排序消息以确保正确的时间顺序
+            const sortedMessages = [...messages].sort((a, b) => a.index - b.index);
+            let dirtyCount = 0;
+
+            console.log(`${LOG_PREFIX} 开始标记脏数据，原始消息数量: ${messages.length}`);
+
+            for (let i = 0; i < sortedMessages.length; i++) {
+                const currentMessage = sortedMessages[i];
+
+                // 如果是用户消息，检查下一个消息是否是 Claude 的回复
+                if (currentMessage.sender === 'human') {
+                    const nextMessage = sortedMessages[i + 1];
+
+                    // 如果没有下一个消息，或者下一个消息也是用户消息，说明是孤儿用户节点
+                    if (!nextMessage || nextMessage.sender === 'human') {
+                        console.log(`${LOG_PREFIX} 发现孤儿用户节点: ${currentMessage.uuid.slice(-8)}, index: ${currentMessage.index}, 内容: "${currentMessage.content?.[0]?.text?.slice(0, 50) || '空内容'}..."`);
+                        // 标记为脏数据而不是删除
+                        currentMessage._isDirtyData = true;
+                        dirtyCount++;
+                    }
+                }
+            }
+
+            if (dirtyCount > 0) {
+                console.log(`${LOG_PREFIX} 标记完成，标记了 ${dirtyCount} 个孤儿用户节点为脏数据，总消息数量: ${messages.length}`);
+            }
+
+            return messages; // 返回包含脏数据标记的完整消息列表
+        },
+
+        // 获取清洁数据（不包含脏数据的消息列表）
+        getCleanMessages(messages) {
+            return messages.filter(msg => !msg._isDirtyData);
+        },
+
+        buildConversationTree(messages) {
+            const nodes = {};
+            messages.forEach(msg => { nodes[msg.uuid] = msg; });
+
+            const childrenMap = {};
+            messages.forEach(msg => {
+                const parentUuid = msg.parent_message_uuid || Config.INITIAL_PARENT_UUID;
+                if (!childrenMap[parentUuid]) childrenMap[parentUuid] = [];
+                childrenMap[parentUuid].push(msg.uuid);
+            });
+
+            for (const parentUuid in childrenMap) {
+                childrenMap[parentUuid].sort((a, b) => new Date(nodes[a].created_at) - new Date(nodes[b].created_at));
+            }
+
+            function assignIdsRecursive(nodeUuid, prefix) {
+                if (!nodes[nodeUuid]) return;
+                const node = nodes[nodeUuid];
+                node.tree_id = prefix;
+
+                const children = childrenMap[nodeUuid] || [];
+                let normalIndex = 0;
+                let dirtyCount = 1;
+
+                children.forEach((childUuid) => {
+                    const childNode = nodes[childUuid];
+                    if (!childNode) return;
+
+                    // 检测脏数据：标记了 _isDirtyData 的节点
+                    const isDirtyData = childNode._isDirtyData;
+
+                    if (isDirtyData) {
+                        assignIdsRecursive(childUuid, `${prefix}-F${dirtyCount}`);
+                        dirtyCount++;
+                    } else {
+                        assignIdsRecursive(childUuid, `${prefix}-${normalIndex}`);
+                        normalIndex++;
+                    }
+                });
+            }
+
+            const rootNodes = childrenMap[Config.INITIAL_PARENT_UUID] || [];
+            rootNodes.forEach((rootUuid, index) => {
+                assignIdsRecursive(rootUuid, `root-${index}`);
+            });
+
+            return { nodes, childrenMap, rootNodes };
         },
         async createTempConversation() {
             const orgId = await this.getOrgUuid();
@@ -286,74 +437,901 @@
             const response = await fetch(url);
             if (!response.ok) throw new Error(`文件下载失败: ${response.status} at ${url}`);
             return response.blob();
+        },
+
+        async updateCurrentLinearBranch() {
+            // 分析当前前端显示的线性分支
+            if (!this.conversationTree) {
+                // 尝试自动初始化对话树
+                await this.tryInitializeConversationTree();
+                if (!this.conversationTree) {
+                    this.currentLinearBranch = [];
+                    return;
+                }
+            }
+
+            const turns = this.findCurrentTurns();
+
+            // 构建线性分支：前端DOM显示的必定是完整的父子串行关系
+            const branch = this.buildLinearBranchFromDOM(turns);
+            this.currentLinearBranch = branch;
+
+            return turns; // 返回turns避免重复调用
+        },
+
+        async tryInitializeConversationTree() {
+            // 智能初始化对话树 - 避免重复请求
+            try {
+                const currentUrl = window.location.href;
+                const pathParts = new URL(currentUrl).pathname.split('/');
+                const conversationUuid = (pathParts[1] === 'chat' && pathParts[2]) ? pathParts[2] : null;
+
+                if (!conversationUuid || conversationUuid === 'new') {
+                    return false;
+                }
+
+                // 检查是否已经为当前对话初始化过
+                if (this.isInitialized && this.currentConversationUuid === conversationUuid) {
+                    return true;
+                }
+
+                // 初始化新的对话树
+                await this.getConversationHistory(conversationUuid);
+                this.currentConversationUuid = conversationUuid;
+                this.isInitialized = true;
+                return true;
+            } catch (error) {
+                console.warn(`对话树初始化失败:`, error);
+                this.isInitialized = false;
+            }
+            return false;
+        },
+
+        // 检测对话切换，重置初始化状态
+        checkConversationChange() {
+            const currentUrl = window.location.href;
+            const pathParts = new URL(currentUrl).pathname.split('/');
+            const conversationUuid = (pathParts[1] === 'chat' && pathParts[2]) ? pathParts[2] : null;
+
+            if (conversationUuid !== this.currentConversationUuid) {
+                console.log(`检测到对话切换: ${this.currentConversationUuid?.slice(-8) || 'none'} → ${conversationUuid?.slice(-8) || 'none'}`);
+                this.isInitialized = false;
+                this.conversationTree = null;
+                this.currentLinearBranch = null;
+                this.currentConversationUuid = conversationUuid;
+            }
+        },
+
+        buildLinearBranchFromDOM(turns) {
+            // 基于DOM的串行父子关系构建分支
+            const branch = [];
+            let expectedParentUuid = Config.INITIAL_PARENT_UUID; // 根节点UUID（虚拟，不在前端显示）
+
+            // 预先提取所有兄弟信息，避免重复调用
+            const turnsWithSiblingInfo = turns.map(turn => ({
+                turn,
+                siblingInfo: this.extractSiblingInfo(turn)
+            }));
+
+            // 由于根节点不在前端显示，第一个DOM回合对应根节点的直接子节点
+            for (let i = 0; i < turnsWithSiblingInfo.length; i++) {
+                const { turn, siblingInfo } = turnsWithSiblingInfo[i];
+                const nodeUuid = this.findNodeByPositionWithCachedInfo(turn, expectedParentUuid, siblingInfo);
+
+                if (nodeUuid) {
+                    const node = { ...this.conversationTree.nodes[nodeUuid], uuid: nodeUuid };
+                    // 检查是否为脏数据，如果是则跳过（正常情况下不应该发生，因为脏数据不应该出现在DOM中）
+                    if (!node._isDirtyData) {
+                        branch.push(node);
+                        expectedParentUuid = nodeUuid; // 下一个节点的父节点就是当前节点
+                    } else {
+                        console.warn(`DOM回合 ${i + 1} 匹配到脏数据节点，跳过: ${nodeUuid.slice(-8)}`);
+                    }
+                } else {
+                    console.warn(`DOM回合 ${i + 1} 无法匹配节点 (期望父: ${expectedParentUuid.slice(-8)})`);
+                    break; // 中断构建，因为父子关系链断裂
+                }
+            }
+
+            return branch;
+        },
+
+        findNodeByPosition(turnElement, expectedParentUuid) {
+            // 基于位置信息在对话树中找到精确的节点
+            const siblingInfo = this.extractSiblingInfo(turnElement);
+            return this.findNodeByPositionWithCachedInfo(turnElement, expectedParentUuid, siblingInfo);
+        },
+
+        findNodeByPositionWithCachedInfo(turnElement, expectedParentUuid, siblingInfo) {
+            // 基于位置信息和缓存的兄弟信息在对话树中找到精确的节点
+            const isUser = !!turnElement.querySelector('[data-testid="user-message"]');
+            const expectedSender = isUser ? 'human' : 'assistant';
+            const { nodes, childrenMap } = this.conversationTree;
+
+            // 获取期望父节点的所有子节点，排除脏数据
+            const siblings = childrenMap[expectedParentUuid] || [];
+            const sameTypeSiblings = siblings.filter(uuid =>
+                nodes[uuid] && nodes[uuid].sender === expectedSender && !nodes[uuid]._isDirtyData
+            );
+
+            if (siblingInfo) {
+                // 有兄弟信息时，使用精确位置匹配
+                if (sameTypeSiblings.length === siblingInfo.totalSiblings) {
+                    const targetIndex = siblingInfo.currentIndex;
+                    if (targetIndex >= 0 && targetIndex < sameTypeSiblings.length) {
+                        return sameTypeSiblings[targetIndex];
+                    }
+                } else {
+                    console.warn(`兄弟数量不匹配: DOM显示${siblingInfo.totalSiblings}个, 树中有${sameTypeSiblings.length}个`);
+                }
+            } else {
+                // 没有兄弟信息时的处理逻辑
+                if (sameTypeSiblings.length === 1) {
+                    return sameTypeSiblings[0];
+                } else if (sameTypeSiblings.length > 1) {
+                    // 选择时间最早的节点（通常是主分支）
+                    const sortedSiblings = sameTypeSiblings.sort((a, b) =>
+                        new Date(nodes[a].created_at) - new Date(nodes[b].created_at)
+                    );
+                    return sortedSiblings[0];
+                }
+            }
+
+            return null;
+        },
+
+        findCurrentTurns() {
+            // 基于实际DOM结构查找对话回合 - 只使用最精确的选择器
+            const elements = document.querySelectorAll('div[data-test-render-count]');
+            const validElements = Array.from(elements).filter(el => {
+                // 检查是否包含用户消息或Claude响应内容
+                const hasUserMessage = !!el.querySelector('[data-testid="user-message"]');
+                const hasClaudeResponse = !!el.querySelector('.font-claude-response');
+
+                // 必须是用户消息或Claude响应之一
+                return hasUserMessage || hasClaudeResponse;
+            });
+
+            return validElements;
+        },
+
+        extractSiblingInfo(turnElement) {
+            // 查找关键定位元素：<span class="self-center shrink-0 select-none font-small text-text-300">a / b</span>
+            // 其中 b 代表包括自己在内总共有多少个兄弟节点，a 代表自己处于兄弟节点的第几个（1基索引）
+
+            // 精确的类名匹配
+            let siblingSpan = turnElement.querySelector('span.self-center.shrink-0.select-none.font-small.text-text-300');
+
+            if (siblingSpan) {
+                const text = siblingSpan.textContent?.trim();
+                const match = text.match(/(\d+)\s*\/\s*(\d+)/);
+                if (match) {
+                    const currentPosition = parseInt(match[1]); // 1基索引位置
+                    const totalSiblings = parseInt(match[2]);   // 包括自己在内的总数
+
+                    return {
+                        currentIndex: currentPosition - 1, // 转换为0基索引用于数组操作
+                        totalSiblings: totalSiblings
+                    };
+                }
+            }
+
+            return null;
+        },
+
+        extractNodeText(node) {
+            if (node.content && Array.isArray(node.content)) {
+                // 根据真实数据格式提取文本
+                for (const contentBlock of node.content) {
+                    if (contentBlock.type === 'text' && contentBlock.text) {
+                        return contentBlock.text;
+                    }
+                }
+            }
+            return node.text || '';
+        },
+
+        // 检查目标节点是否在当前线性分支中
+        isNodeInCurrentBranch(nodeUuid) {
+            if (!this.currentLinearBranch) return false;
+            return this.currentLinearBranch.some(node => node && node.uuid === nodeUuid);
         }
     };
 
     // =========================================================================
-    // 5. 共享UI与逻辑模块
+    // 5. 分支切换核心功能
     // =========================================================================
-    const SharedLogic = {
-        buildConversationTree(messages) {
-            const nodes = {};
-            messages.forEach(msg => { nodes[msg.uuid] = msg; });
-
-            const childrenMap = {};
-            messages.forEach(msg => {
-                const parentUuid = msg.parent_message_uuid || Config.INITIAL_PARENT_UUID;
-                if (!childrenMap[parentUuid]) childrenMap[parentUuid] = [];
-                childrenMap[parentUuid].push(msg.uuid);
-            });
-
-            for (const parentUuid in childrenMap) {
-                childrenMap[parentUuid].sort((a, b) => new Date(nodes[a].created_at) - new Date(nodes[b].created_at));
-            }
-
-            function assignIdsRecursive(nodeUuid, prefix) {
-                if (!nodes[nodeUuid]) return;
-                const node = nodes[nodeUuid];
-                node.tree_id = prefix;
-                
-                const children = childrenMap[nodeUuid] || [];
-                let normalIndex = 0;
-                let dirtyCount = 1;
-                
-                children.forEach((childUuid) => {
-                    const childNode = nodes[childUuid];
-                    if (!childNode) return;
-                    
-                    // 检测脏数据：human节点没有子节点
-                    const childChildren = childrenMap[childUuid] || [];
-                    const isDirtyData = childNode.sender === 'human' && childChildren.length === 0;
-                    
-                    if (isDirtyData) {
-                        assignIdsRecursive(childUuid, `${prefix}-F${dirtyCount}`);
-                        dirtyCount++;
-                    } else {
-                        assignIdsRecursive(childUuid, `${prefix}-${normalIndex}`);
-                        normalIndex++;
-                    }
-                });
-            }
-            
-
-            const rootNodes = childrenMap[Config.INITIAL_PARENT_UUID] || [];
-            rootNodes.forEach((rootUuid, index) => {
-                assignIdsRecursive(rootUuid, `root-${index}`);
-            });
-
-            return { nodes, childrenMap, rootNodes };
+    const BranchSwitcher = {
+        // 基础工具函数
+        wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         },
 
+        // 切换到阶段性目标节点
+        async switchToTargetStageNode(targetNodeUuid) {
+            console.log(`${LOG_PREFIX} 尝试切换到阶段性目标节点: ${targetNodeUuid.slice(-8)}`);
+
+            // 1. 判断阶段性目标节点是否在前端
+            if (ClaudeAPI.isNodeInCurrentBranch(targetNodeUuid)) {
+                console.log(`${LOG_PREFIX} 目标节点已在当前前端显示`);
+                return true;
+            }
+
+            // 2. 判断阶段性目标节点的父节点是否在前端
+            const { nodes } = ClaudeAPI.conversationTree;
+            const targetNode = nodes[targetNodeUuid];
+            if (!targetNode) {
+                console.error(`${LOG_PREFIX} 找不到目标节点: ${targetNodeUuid.slice(-8)}`);
+                return false;
+            }
+
+            // 检查目标节点是否为脏数据
+            if (targetNode._isDirtyData) {
+                console.error(`${LOG_PREFIX} 目标节点是脏数据，无法切换: ${targetNodeUuid.slice(-8)}`);
+                return false;
+            }
+
+            const parentUuid = targetNode.parent_message_uuid || Config.INITIAL_PARENT_UUID;
+
+            // 如果父节点是根节点，检查根节点是否等效在前端（即第一个节点的父节点）
+            let isParentInFrontend = false;
+            if (parentUuid === Config.INITIAL_PARENT_UUID) {
+                // 根节点场景：只要当前分支有节点，根节点就等效在前端
+                isParentInFrontend = ClaudeAPI.currentLinearBranch && ClaudeAPI.currentLinearBranch.length > 0;
+            } else {
+                isParentInFrontend = ClaudeAPI.isNodeInCurrentBranch(parentUuid);
+            }
+
+            if (!isParentInFrontend) {
+                console.log(`${LOG_PREFIX} 目标节点的父节点不在前端显示: ${parentUuid.slice(-8)}`);
+                return false;
+            }
+
+            // 3. 计算要执行的操作
+            const { childrenMap } = ClaudeAPI.conversationTree;
+            const siblings = childrenMap[parentUuid] || [];
+            const sameTypeSiblings = siblings.filter(uuid =>
+                nodes[uuid] && nodes[uuid].sender === targetNode.sender && !nodes[uuid]._isDirtyData
+            );
+
+            // 3.1 计算阶段性目标节点在其父节点的子节点中的位置index
+            const targetIndex = sameTypeSiblings.indexOf(targetNodeUuid);
+            if (targetIndex === -1) {
+                console.error(`${LOG_PREFIX} 在兄弟节点中找不到目标节点`);
+                return false;
+            }
+
+            // 3.2 计算当前前端显示的兄弟节点位置
+            let currentIndex = -1;
+            if (parentUuid === Config.INITIAL_PARENT_UUID) {
+                // 根节点场景：查找第一个同类型节点
+                if (ClaudeAPI.currentLinearBranch && ClaudeAPI.currentLinearBranch.length > 0) {
+                    const firstNodeOfSameType = ClaudeAPI.currentLinearBranch.find(node =>
+                        node && node.sender === targetNode.sender
+                    );
+                    if (firstNodeOfSameType) {
+                        currentIndex = sameTypeSiblings.indexOf(firstNodeOfSameType.uuid);
+                    }
+                }
+            } else {
+                // 非根节点场景：查找父节点后的第一个同类型节点
+                const parentIndexInBranch = ClaudeAPI.currentLinearBranch.findIndex(node =>
+                    node && node.uuid === parentUuid
+                );
+                if (parentIndexInBranch !== -1) {
+                    for (let i = parentIndexInBranch + 1; i < ClaudeAPI.currentLinearBranch.length; i++) {
+                        const node = ClaudeAPI.currentLinearBranch[i];
+                        if (node && node.sender === targetNode.sender) {
+                            currentIndex = sameTypeSiblings.indexOf(node.uuid);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (currentIndex === -1) {
+                console.error(`${LOG_PREFIX} 无法确定当前同类型兄弟节点的位置`);
+                return false;
+            }
+
+            // 3.3 计算位置差
+            const diff = targetIndex - currentIndex;
+            console.log(`${LOG_PREFIX} 需要切换 ${diff} 步 (目标位置: ${targetIndex}, 当前位置: ${currentIndex})`);
+
+            if (diff === 0) {
+                console.log(`${LOG_PREFIX} 已经在目标位置`);
+                return true;
+            }
+
+            // 4. 执行切换操作
+            const direction = diff > 0 ? 'right' : 'left';
+            const steps = Math.abs(diff);
+
+            // 找到要操作的前端节点索引
+            let frontendNodeIndex = -1;
+            if (parentUuid === Config.INITIAL_PARENT_UUID) {
+                // 根节点场景：找到第一个同类型节点
+                for (let i = 0; i < ClaudeAPI.currentLinearBranch.length; i++) {
+                    const node = ClaudeAPI.currentLinearBranch[i];
+                    if (node && node.sender === targetNode.sender) {
+                        frontendNodeIndex = i + 1; // 转换为1基索引
+                        break;
+                    }
+                }
+            } else {
+                // 非根节点场景：找到父节点后的第一个同类型节点
+                const parentIndexInBranch = ClaudeAPI.currentLinearBranch.findIndex(node =>
+                    node && node.uuid === parentUuid
+                );
+                if (parentIndexInBranch !== -1) {
+                    for (let i = parentIndexInBranch + 1; i < ClaudeAPI.currentLinearBranch.length; i++) {
+                        const node = ClaudeAPI.currentLinearBranch[i];
+                        if (node && node.sender === targetNode.sender) {
+                            frontendNodeIndex = i + 1; // 转换为1基索引
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (frontendNodeIndex === -1) {
+                console.error(`${LOG_PREFIX} 无法确定要操作的前端节点索引`);
+                return false;
+            }
+
+            // 执行切换步骤
+            for (let step = 0; step < steps; step++) {
+                console.log(`${LOG_PREFIX} 执行第 ${step + 1}/${steps} 步 ${direction} 切换`);
+
+                const success = await this.clickNodeSwitch(direction, frontendNodeIndex);
+                if (!success) {
+                    console.error(`${LOG_PREFIX} 第 ${step + 1} 步切换失败`);
+                    return false;
+                }
+
+                // 等待切换完成
+                await this.wait(300);
+
+                // 更新当前分支状态
+                await ClaudeAPI.updateCurrentLinearBranch();
+            }
+
+            // 5. 验证是否切换成功
+            await this.wait(200);
+            await ClaudeAPI.updateCurrentLinearBranch();
+
+            const success = ClaudeAPI.isNodeInCurrentBranch(targetNodeUuid);
+            console.log(`${LOG_PREFIX} 切换${success ? '成功' : '失败'}: ${targetNodeUuid.slice(-8)}`);
+
+            return success;
+        },
+
+        // 递归切换到目标节点
+        async switchToTargetNode(targetNodeUuid) {
+            console.log(`${LOG_PREFIX} 开始切换到目标节点: ${targetNodeUuid.slice(-8)}`);
+
+            // 确保对话树已初始化
+            if (!ClaudeAPI.conversationTree) {
+                await ClaudeAPI.tryInitializeConversationTree();
+                if (!ClaudeAPI.conversationTree) {
+                    console.error(`${LOG_PREFIX} 对话树未初始化`);
+                    return false;
+                }
+            }
+
+            // 更新当前分支状态
+            await ClaudeAPI.updateCurrentLinearBranch();
+
+            // 尝试直接切换到目标节点
+            if (await this.switchToTargetStageNode(targetNodeUuid)) {
+                return true;
+            }
+
+            // 如果直接切换失败，递归切换到父节点
+            const { nodes } = ClaudeAPI.conversationTree;
+            const targetNode = nodes[targetNodeUuid];
+            if (!targetNode) {
+                console.error(`${LOG_PREFIX} 找不到目标节点: ${targetNodeUuid.slice(-8)}`);
+                return false;
+            }
+
+            // 检查目标节点是否为脏数据
+            if (targetNode._isDirtyData) {
+                console.error(`${LOG_PREFIX} 目标节点是脏数据，无法递归切换: ${targetNodeUuid.slice(-8)}`);
+                return false;
+            }
+
+            const parentUuid = targetNode.parent_message_uuid;
+            if (!parentUuid || parentUuid === Config.INITIAL_PARENT_UUID) {
+                console.error(`${LOG_PREFIX} 已到达根节点，无法继续递归`);
+                return false;
+            }
+
+            console.log(`${LOG_PREFIX} 递归切换到父节点: ${parentUuid.slice(-8)}`);
+
+            // 递归调用切换到父节点
+            if (await this.switchToTargetNode(parentUuid)) {
+                // 父节点切换成功后，再次尝试切换到目标节点
+                console.log(`${LOG_PREFIX} 父节点切换成功，重新尝试切换到目标节点`);
+                return await this.switchToTargetStageNode(targetNodeUuid);
+            } else {
+                console.error(`${LOG_PREFIX} 递归失败，无法切换到父节点: ${parentUuid.slice(-8)}`);
+                return false;
+            }
+        },
+
+        // 通用切换函数（简化版，用于与现有按钮交互）
+        async clickNodeSwitch(direction, frontendIndex = 1) {
+            const turns = ClaudeAPI.findCurrentTurns();
+            if (frontendIndex < 1 || frontendIndex > turns.length) {
+                console.error(`${LOG_PREFIX} 前端节点索引超出范围。有效范围: 1-${turns.length}`);
+                return false;
+            }
+
+            // 在指定的前端节点中查找切换按钮
+            const targetTurn = turns[frontendIndex - 1];
+            let buttonSelector;
+
+            if (direction === 'right') {
+                buttonSelector = 'button[type="button"]:not([disabled]) svg path[d*="M6.13378 3.16011"]';
+            } else if (direction === 'left') {
+                buttonSelector = 'button[type="button"] svg path[d*="M13.2402 3.07224"]';
+            } else {
+                console.error(`${LOG_PREFIX} 无效的方向参数。请使用 'left' 或 'right'`);
+                return false;
+            }
+
+            const buttonPath = targetTurn.querySelector(buttonSelector);
+
+            if (buttonPath) {
+                const button = buttonPath.closest('button');
+                if (button && !button.disabled) {
+                    console.log(`${LOG_PREFIX} 点击前端节点#${frontendIndex}的${direction === 'right' ? '右' : '左'}切换按钮`);
+                    button.click();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    return true;
+                }
+            }
+
+            console.error(`${LOG_PREFIX} 前端节点#${frontendIndex}没有可用的${direction === 'right' ? '右' : '左'}切换按钮`);
+            return false;
+        }
+    };
+
+    // =========================================================================
+    // 6. 线性跳转功能
+    // =========================================================================
+    const LinearNavigator = {
+        // 滚动到元素
+        scrollToElement(element, topMargin = Config.topMargin) {
+            if (!element) return;
+
+            const anchor = this.findAnchor(element);
+            const scroller = this.getScrollContainer(anchor);
+            if (!scroller) return;
+
+            const isWindow = scroller === document.documentElement ||
+                            scroller === document.body ||
+                            scroller === document.scrollingElement;
+
+            const scrollerRect = isWindow ?
+                { top: 0, height: window.innerHeight } :
+                scroller.getBoundingClientRect();
+
+            const anchorRect = anchor.getBoundingClientRect();
+            const currentScrollTop = isWindow ? window.scrollY : scroller.scrollTop;
+            const targetScrollTop = currentScrollTop + (anchorRect.top - scrollerRect.top) - topMargin;
+            const maxScrollTop = scroller.scrollHeight - scroller.clientHeight;
+            const finalScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+
+            scroller.scrollTo({ top: finalScrollTop, behavior: 'smooth' });
+
+            // 高亮效果
+            this.addHighlight(element);
+            if (anchor !== element) this.addHighlight(anchor);
+        },
+
+        findAnchor(turnElement) {
+            const selectors = [
+                '[data-testid="user-message"]',
+                '.font-claude-response',
+                'p', 'li', 'pre'
+            ];
+
+            for (const selector of selectors) {
+                const element = turnElement.querySelector(selector);
+                if (element && element.offsetParent) return element;
+            }
+            return turnElement;
+        },
+
+        getScrollContainer(element) {
+            let el = element;
+            while (el && el !== document.documentElement) {
+                const style = getComputedStyle(el);
+                if ((style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+                    el.scrollHeight > el.clientHeight) {
+                    return el;
+                }
+                el = el.parentElement;
+            }
+            return document.scrollingElement || document.documentElement;
+        },
+
+        addHighlight(element) {
+            element.classList.add('highlight-pulse');
+            setTimeout(() => element.classList.remove('highlight-pulse'), 3100);
+        },
+
+        // 线性跳转到指定节点
+        async jumpToNode(nodeUuid) {
+            // 检查目标节点是否为脏数据
+            if (ClaudeAPI.conversationTree) {
+                const targetNode = ClaudeAPI.conversationTree.nodes[nodeUuid];
+                if (targetNode && targetNode._isDirtyData) {
+                    console.error(`${LOG_PREFIX} 目标节点是脏数据，无法跳转: ${nodeUuid.slice(-8)}`);
+                    return false;
+                }
+            }
+
+            // 首先更新当前线性分支状态
+            await ClaudeAPI.updateCurrentLinearBranch();
+
+            // 2.1 当前前端状态的线性分支包含该节点，直接跳转
+            if (ClaudeAPI.isNodeInCurrentBranch(nodeUuid)) {
+                this.jumpToNodeInCurrentBranch(nodeUuid);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                return true;
+            } else {
+                // 2.2 当前前端状态的线性分支不包含该节点，执行跨分支跳转
+                console.log(`${LOG_PREFIX} 目标节点不在当前分支中，开始跨分支跳转: ${nodeUuid.slice(-8)}`);
+
+                // 调用分支切换器进行跨分支跳转
+                const switchSuccess = await BranchSwitcher.switchToTargetNode(nodeUuid);
+
+                if (switchSuccess) {
+                    // 分支切换成功后，执行页面内跳转到目标节点
+                    console.log(`${LOG_PREFIX} 分支切换成功，执行页面内跳转`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    // 更新分支状态并跳转
+                    await ClaudeAPI.updateCurrentLinearBranch();
+                    this.jumpToNodeInCurrentBranch(nodeUuid);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    return true;
+                } else {
+                    console.error(`${LOG_PREFIX} 跨分支跳转失败: ${nodeUuid.slice(-8)}`);
+                    return false;
+                }
+            }
+        },
+
+        jumpToNodeInCurrentBranch(nodeUuid, cachedTurns = null) {
+            // 在当前分支中跳转
+            const element = document.getElementById(nodeUuid) ||
+                           this.findElementByNodeUuid(nodeUuid, cachedTurns);
+            if (element) {
+                this.scrollToElement(element);
+            }
+        },
+
+        findElementByNodeUuid(nodeUuid, cachedTurns = null) {
+            // 直接通过ID查找
+            const directElement = document.getElementById(nodeUuid);
+            if (directElement) return directElement;
+
+            // 基于位置在当前线性分支中查找对应的DOM元素
+            if (!ClaudeAPI.currentLinearBranch) return null;
+
+            // 找到目标节点在当前分支中的索引
+            const nodeIndex = ClaudeAPI.currentLinearBranch.findIndex(node => node.uuid === nodeUuid);
+            if (nodeIndex === -1) return null;
+
+            // 使用缓存的turns或获取当前显示的所有回合
+            const turns = cachedTurns || ClaudeAPI.findCurrentTurns();
+
+            if (nodeIndex < turns.length) {
+                return turns[nodeIndex];
+            }
+
+            return null;
+        }
+    };
+
+    // =========================================================================
+    // 7. 线性对话索引管理
+    // =========================================================================
+    const LinearTurnIndex = {
+        generateId(index, urlHash = null) {
+            const hash = urlHash || location.pathname.split('/').pop() || 'default';
+            return `cpm-ln-turn-${hash}-${index + 1}`;
+        },
+
+        detectRole(turnElement) {
+            const isUser = !!turnElement.querySelector('[data-testid="user-message"]');
+            const isAssistant = !!turnElement.querySelector('.font-claude-response');
+
+            if (isUser) return 'user';
+            if (isAssistant) return 'assistant';
+            return null;
+        },
+
+        build() {
+            const turns = ClaudeAPI.findCurrentTurns();
+            if (!turns.length) return [];
+
+            const index = [];
+            for (let i = 0; i < turns.length; i++) {
+                const turnElement = turns[i];
+                const role = this.detectRole(turnElement);
+                if (!role) continue;
+
+                turnElement.setAttribute('data-cpm-ln-turn', '1');
+
+                const contentElement = turnElement.querySelector('[data-testid="user-message"]') ||
+                                     turnElement.querySelector('.font-claude-response') ||
+                                     turnElement;
+                let preview = TextUtils.getPreview(contentElement);
+
+                // 简化的附件检测逻辑：用户节点且无文本内容时显示附件图标
+                if (role === 'user' && !preview) {
+                    preview = 'attachment';
+                }
+
+                if (!preview) continue;
+
+                if (!turnElement.id) {
+                    turnElement.id = this.generateId(i);
+                }
+
+                index.push({
+                    id: turnElement.id,
+                    idx: i,
+                    role,
+                    preview,
+                    element: turnElement
+                });
+            }
+
+            return index;
+        }
+    };
+
+    // =========================================================================
+    // 8. 线性导航UI组件
+    // =========================================================================
+    class LinearNavUI {
+        constructor() {
+            this.element = null;
+            this.isHovered = false;
+            this.currentActiveId = null;
+            this.isVisible = false;
+        }
+
+        create() {
+            this.element = this.createElement();
+            this.setupDrag();
+            this.bindEvents();
+            document.body.appendChild(this.element);
+            return this;
+        }
+
+        createElement() {
+            const nav = document.createElement('div');
+            nav.id = 'cpm-ln-nav';
+            nav.innerHTML = `
+                <div class="cpm-ln-header">
+                    <div style="display: flex; align-items: center; margin-left: -4px;">
+                        <button class="cpm-ln-refresh" type="button" title="刷新对话列表">
+                            <svg class="cpm-svg-icon" style="width:14px; height:14px;"><use href="#cpm-ln-icon-refresh"></use></svg>
+                        </button>
+                    </div>
+                    <div class="cpm-ln-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px; height:16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                        </svg>
+                        <span>线性导航</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-right: -4px;">
+                        <button class="cpm-ln-close" type="button" title="关闭线性导航">
+                            <svg class="cpm-svg-icon" style="width:14px; height:14px;"><use href="#cpm-ln-icon-close"></use></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="cpm-ln-list"></div>
+                <div class="cpm-ln-footer">
+                    <button class="cpm-ln-nav-btn" type="button" data-action="top" title="回到顶部">
+                        <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-line-up"></use></svg>
+                    </button>
+                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="prev" title="上一条">
+                        <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-up"></use></svg>
+                    </button>
+                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="next" title="下一条">
+                        <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-down"></use></svg>
+                    </button>
+                    <button class="cpm-ln-nav-btn" type="button" data-action="bottom" title="回到底部">
+                        <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-line-down"></use></svg>
+                    </button>
+                </div>
+            `;
+            return nav;
+        }
+
+        setupDrag() {
+            const header = this.element.querySelector('.cpm-ln-header');
+            let isDragging = false, startX, startY, startLeft, startTop;
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button')) return;
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = this.element.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                this.element.style.left = `${startLeft + (e.clientX - startX)}px`;
+                this.element.style.top = `${startTop + (e.clientY - startY)}px`;
+                this.element.style.right = 'auto';
+                this.element.style.bottom = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => { isDragging = false; });
+        }
+
+        bindEvents() {
+            // 悬停状态
+            this.element.addEventListener('mouseenter', () => { this.isHovered = true; });
+            this.element.addEventListener('mouseleave', () => { this.isHovered = false; });
+
+            // 防止选择
+            this.element.addEventListener('dblclick', (e) => e.preventDefault(), { capture: true });
+            this.element.addEventListener('selectstart', (e) => e.preventDefault(), { capture: true });
+            this.element.addEventListener('mousedown', (e) => { if (e.detail > 1) e.preventDefault(); }, { capture: true });
+
+            // 关闭按钮
+            this.element.querySelector('.cpm-ln-close').addEventListener('click', () => {
+                this.hide();
+            });
+
+            // 刷新
+            this.element.querySelector('.cpm-ln-refresh').addEventListener('click', () => {
+                this.onRefresh();
+            });
+
+            // 导航按钮
+            this.element.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const action = e.currentTarget.dataset.action;
+                    this.onNavigate(action);
+                });
+            });
+
+            // 列表点击
+            const list = this.element.querySelector('.cpm-ln-list');
+            list.addEventListener('click', (e) => {
+                const item = e.target.closest('.cpm-ln-item');
+                if (item && item.dataset.id) {
+                    this.onItemClick(item.dataset.id);
+                }
+            });
+        }
+
+        show() {
+            if (!this.isVisible) {
+                this.isVisible = true;
+                this.element.classList.add('visible');
+                StorageManager.setPanelState(true);
+            }
+        }
+
+        hide() {
+            if (this.isVisible) {
+                this.isVisible = false;
+                this.element.classList.remove('visible');
+                StorageManager.setPanelState(false);
+            }
+        }
+
+        toggle() {
+            if (this.isVisible) {
+                this.hide();
+            } else {
+                this.show();
+                this.onRefresh();
+            }
+        }
+
+        render(indexData) {
+            const list = this.element.querySelector('.cpm-ln-list');
+            if (!indexData.length) {
+                list.innerHTML = `<div class="cpm-ln-empty">暂无线性对话</div>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            for (const item of indexData) {
+                const node = document.createElement('div');
+                node.className = `cpm-ln-item ${item.role}`;
+                node.dataset.id = item.id;
+
+                // 检查是否为附件格式并添加图标
+                const hasAttachmentFormat = item.preview === 'attachment';
+
+                if (hasAttachmentFormat) {
+                    node.innerHTML = `
+                        <span class="cpm-ln-number">${item.idx + 1}.</span>
+                        <span class="cpm-ln-text" title="${TextUtils.escapeAttr(item.preview)}" style="display:inline-flex;align-items:center;white-space:nowrap;">
+                            <svg class="cpm-svg-icon" style="width:12px;height:12px;margin-right:3px;vertical-align:middle;"><use href="#cpm-ln-icon-paperclip"></use></svg>${TextUtils.escapeHtml(item.preview)}
+                        </span>
+                    `;
+                } else {
+                    node.innerHTML = `
+                        <span class="cpm-ln-number">${item.idx + 1}.</span>
+                        <span class="cpm-ln-text" title="${TextUtils.escapeAttr(item.preview)}">
+                            ${TextUtils.escapeHtml(item.preview)}
+                        </span>
+                    `;
+                }
+
+                node.setAttribute('draggable', 'false');
+                list.appendChild(node);
+            }
+        }
+
+        setActive(id) {
+            this.currentActiveId = id;
+
+            const list = this.element.querySelector('.cpm-ln-list');
+            list.querySelectorAll('.cpm-ln-item.active').forEach(n => n.classList.remove('active'));
+
+            const activeItem = list.querySelector(`.cpm-ln-item[data-id="${id}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+
+                // 确保激活项可见
+                const itemRect = activeItem.getBoundingClientRect();
+                const listRect = list.getBoundingClientRect();
+                if (itemRect.top < listRect.top) {
+                    list.scrollTop += itemRect.top - listRect.top - 4;
+                } else if (itemRect.bottom > listRect.bottom) {
+                    list.scrollTop += itemRect.bottom - listRect.bottom + 4;
+                }
+            }
+        }
+
+        destroy() {
+            if (this.element) {
+                this.element.remove();
+                this.element = null;
+            }
+        }
+
+        // 事件回调（由外部设置）
+        onRefresh() {}
+        onNavigate() {}
+        onItemClick() {}
+    }
+
+    // =========================================================================
+    // 9. 共享UI与逻辑模块
+    // =========================================================================
+    const SharedLogic = {
+
         async renderTreeView(container, messages, options = {}) {
-            const { isForBranching = false, onNodeClick = () => {} } = options;
+            const { isForBranching = false, isNavigationMode = false, onNodeClick = () => {} } = options;
             container.innerHTML = '';
 
             if (!messages || messages.length === 0) {
-                 container.innerHTML = `<p class="cpm-loading">这是一个空对话${isForBranching ? '，无法选择分支点' : ''}。</p>`;
+                 container.innerHTML = `<p class="cpm-loading">这是一个空对话${isForBranching ? '，无法选择节点' : ''}。</p>`;
                  return;
             }
 
-            if (isForBranching) {
+            if (isForBranching && !isNavigationMode) {
                 const rootBtn = document.createElement('div');
                 rootBtn.id = 'cpm-branch-from-root-btn';
                 rootBtn.textContent = '从根节点开始 (创建一个新的主分支)';
@@ -361,7 +1339,7 @@
                 container.appendChild(rootBtn);
             }
 
-            const { nodes, childrenMap, rootNodes } = this.buildConversationTree(messages);
+            const { nodes, childrenMap, rootNodes } = ClaudeAPI.buildConversationTree(messages);
             const orgUuid = await ClaudeAPI.getOrgUuid();
             const baseUrl = window.location.origin;
 
@@ -431,10 +1409,10 @@
                 }
 
                 // 检测是否为脏数据节点
-                const isDirtyNode = node.tree_id && node.tree_id.includes('-F');
+                const isDirtyNode = node._isDirtyData || (node.tree_id && node.tree_id.includes('-F'));
                 const dirtyClass = isDirtyNode ? ' cpm-dirty-node' : '';
                 const dirtyLabel = isDirtyNode ? ' [脏数据]' : '';
-                
+
                 nodeElement.innerHTML = `
                     <div class="cpm-tree-node-header${dirtyClass}">
                         <span class="cpm-tree-node-id">[${node.tree_id}]</span>
@@ -443,11 +1421,15 @@
                     </div>
                     ${attachmentsHTML}`;
 
-                if (isForBranching && node.sender === 'assistant') {
-                    nodeElement.classList.add('cpm-branch-node-clickable');
-                    nodeElement.title = `点击从此节点继续对话`;
+                // 根据模式决定哪些节点可以点击（脏数据节点不可点击）
+                const isClickable = !isDirtyNode && (isNavigationMode ? true : (isForBranching && node.sender === 'assistant'));
+
+                if (isClickable) {
+                    nodeElement.classList.add('cpm-node-clickable');
+                    nodeElement.title = isNavigationMode ? '点击导航到此节点' : '点击从此节点继续对话';
                     nodeElement.onclick = () => onNodeClick(node.uuid, nodeElement);
                 }
+
                 container.appendChild(nodeElement);
                 (childrenMap[nodeUuid] || []).forEach(childUuid => renderNodeRecursive(childUuid, indentLevel + 1));
             };
@@ -471,7 +1453,7 @@
             return true;
         },
         async exportAttachmentsForConversation(historyData, exportDirHandle, statusCallback) {
-            const { nodes } = SharedLogic.buildConversationTree(historyData.chat_messages);
+            const { nodes } = ClaudeAPI.buildConversationTree(historyData.chat_messages);
             const allAttachments = [];
             for (const node of Object.values(nodes)) {
                 (node.attachments || []).forEach(file => allAttachments.push({ type: 'text', content: file.extracted_content, ...file }));
@@ -815,6 +1797,33 @@
                         <symbol id="cpm-icon-pdf-mode-off" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></symbol>
                         <symbol id="cpm-icon-pdf-mode-on" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></symbol>
                         <symbol id="cpm-icon-help" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" /></symbol>
+                        <symbol id="cpm-ln-icon-paperclip" viewBox="0 0 20 20" fill="currentColor" stroke-width="0.5">
+                            <g transform="scale(1.2) translate(-1.67, -1.67)">
+                                <path d="M6.0678 2.16105C7.46414 1.61127 9.04215 2.29797 9.59221 3.69425L12.7983 11.8339C13.1238 12.6606 12.7177 13.5952 11.891 13.9208L11.8149 13.9511C10.9883 14.2765 10.0535 13.8695 9.72795 13.0429L8.02678 8.7255C7.92565 8.46868 8.05228 8.17836 8.30901 8.07706C8.56594 7.97586 8.85624 8.10236 8.95744 8.35929L10.6586 12.6767C10.7819 12.9894 11.1359 13.1436 11.4487 13.0204L11.5248 12.9901C11.8377 12.8669 11.9908 12.5129 11.8676 12.2001L8.66155 4.06046C8.31383 3.17839 7.31727 2.74467 6.43498 3.09171L6.28069 3.15226C5.39843 3.49996 4.96466 4.4974 5.31194 5.3798L9.18108 15.2011C9.75314 16.6533 11.3938 17.3667 12.8461 16.7948L13.0766 16.705C14.5288 16.1329 15.2432 14.4913 14.6713 13.039L12.308 7.03898C12.2069 6.78212 12.3325 6.49177 12.5893 6.39054C12.8461 6.28961 13.1365 6.41605 13.2377 6.67277L15.601 12.6728C16.3753 14.6389 15.4089 16.8601 13.4428 17.6347L13.2133 17.7255C11.2472 18.4998 9.025 17.5342 8.25041 15.5683L4.38225 5.74698C3.83217 4.35052 4.51801 2.77168 5.91448 2.22159L6.0678 2.16105Z"/>
+                            </g>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-linear-navigator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                        </symbol>
+                        <symbol id="cpm-ln-icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-arrow-line-up" viewBox="0 0 256 256" fill="currentColor">
+                            <path d="M205.66,138.34a8,8,0,0,1-11.32,11.32L136,91.31V224a8,8,0,0,1-16,0V91.31L61.66,149.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0ZM216,32H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"></path>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-arrow-line-down" viewBox="0 0 256 256" fill="currentColor">
+                            <path d="M50.34,117.66a8,8,0,0,1,11.32-11.32L120,164.69V32a8,8,0,0,1,16,0V164.69l58.34-58.35a8,8,0,0,1,11.32,11.32l-72,72a8,8,0,0,1-11.32,0ZM216,208H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"></path>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-arrow-up" viewBox="0 0 256 256" fill="currentColor">
+                            <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"></path>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-arrow-down" viewBox="0 0 256 256" fill="currentColor">
+                            <path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"></path>
+                        </symbol>
+                        <symbol id="cpm-ln-icon-close" viewBox="0 0 256 256" fill="currentColor">
+                            <path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"></path>
+                        </symbol>
                         <symbol id="cpm-icon-close" viewBox="0 0 256 256" fill="currentColor"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"></path></symbol>
                         <symbol id="cpm-icon-batch-export-original" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /><text x="2" y="7" font-family="Arial, Helvetica, sans-serif" font-size="5" fill="currentColor" stroke="none">bat</text></symbol>
                         <symbol id="cpm-icon-batch-export-custom" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /><text x="2" y="7" font-family="Arial, Helvetica, sans-serif" font-size="5" fill="currentColor" stroke="none">bat</text><g transform="translate(16, 3) scale(0.5)" fill="currentColor" stroke="none"><path fill-rule="evenodd" d="M6.455 1.45A.5.5 0 0 1 6.952 1h2.096a.5.5 0 0 1 .497.45l.186 1.858a4.996 4.996 0 0 1 1.466.848l1.703-.769a.5.5 0 0 1 .639.206l1.047 1.814a.5.5 0 0 1-.14.656l-1.517 1.09a5.026 5.026 0 0 1 0 1.694l1.516 1.09a.5.5 0 0 1 .141.656l-1.047 1.814a.5.5 0 0 1-.639.206l-1.703-.768c-.433.36-.928.649-1.466.847l-.186 1.858a.5.5 0 0 1-.497.45H6.952a.5.5 0 0 1-.497-.45l-.186-1.858a4.993 4.993 0 0 1-1.466-.848l-1.703.769a.5.5 0 0 1-.639-.206l-1.047-1.814a.5.5 0 0 1 .14-.656l1.517-1.09a5.033 5.033 0 0 1 0-1.694l-1.516-1.09a.5.5 0 0 1-.141-.656L2.46 3.593a.5.5 0 0 1 .639-.206l1.703.769c.433-.36.928.65 1.466-.848l.186-1.858Zm-.177 7.567-.022-.037a2 2 0 0 1 3.466-1.997l.022.037a2 2 0 0 1-3.466 1.997Z" clip-rule="evenodd" /></g></symbol>
@@ -839,7 +1848,7 @@
                         <a href="${Config.URL_GITHUB_REPO}" target="_blank" class="cpm-icon-btn" title="查看 GitHub 仓库"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-github"></use></svg></a>
                         <a href="${Config.URL_STUDIO_REPO}" target="_blank" class="cpm-icon-btn" title="了解下一个项目: claude-dialog-tree-studio"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-tree-studio"></use></svg></a>
                         <button id="cpm-open-settings-button" title="设置" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-settings"></use></svg></button>
-                        <button class="cpm-close-button cpm-icon-btn">×</button>
+                        <button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
                     </div>
                 </div>
                 <div class="cpm-toolbar">
@@ -858,7 +1867,7 @@
             settingsPanel.id = 'cpm-settings-panel';
             settingsPanel.className = 'cpm-panel';
 
-            const settingsHeader = `<div class="cpm-header"><h2>管理器设置</h2><button class="cpm-close-button cpm-icon-btn">×</button></div>`;
+            const settingsHeader = `<div class="cpm-header"><h2>管理器设置</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>`;
             const settingsContent = document.createElement('div');
             settingsContent.className = 'cpm-settings-content';
 
@@ -881,7 +1890,7 @@
             treePanel.id = 'cpm-tree-panel';
             treePanel.className = 'cpm-panel cpm-tree-panel-override';
             treePanel.innerHTML = `
-                <div class="cpm-header"><h2 id="cpm-tree-title">对话树预览</h2><button id="cpm-tree-close-button" class="cpm-icon-btn">×</button></div>
+                <div class="cpm-header"><h2 id="cpm-tree-title">对话树预览</h2><button id="cpm-tree-close-button" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
                 <div id="cpm-tree-container" class="cpm-tree-container"><p class="cpm-loading">正在加载对话树...</p></div>`;
             document.body.appendChild(treePanel);
         },
@@ -905,7 +1914,7 @@
             document.getElementById('cpm-batch-export-custom').onclick = () => this.handleBatchExport('custom');
             document.getElementById('cpm-save-settings-button').onclick = () => this.saveSettings();
             document.getElementById('cpm-tree-close-button').onclick = () => this.hidePanel('cpm-tree-panel');
-            
+
             // 添加Ctrl+M键盘快捷键监听
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'm') {
@@ -1024,7 +2033,7 @@
             const originalTitle = titleSpan.textContent.replace(/★/g, '').trim();
             li.dataset.originalDetails = detailsDiv.innerHTML;
             li.dataset.originalActions = actionsDiv.innerHTML;
-            detailsDiv.innerHTML = `<input type="text" class="cpm-edit-input" value="${originalTitle}">`;
+            detailsDiv.innerHTML = `<input type="text" class="cpm-edit-input" value="${TextUtils.escapeAttr(originalTitle)}">`;
             actionsDiv.innerHTML = `<button class="cpm-icon-btn cpm-action-save" title="保存"><svg class="cpm-svg-icon"><use href="#cpm-icon-save"></use></svg></button><button class="cpm-icon-btn cpm-action-cancel" title="取消"><svg class="cpm-svg-icon"><use href="#cpm-icon-cancel"></use></svg></button>`;
             const input = detailsDiv.querySelector('.cpm-edit-input');
             input.focus();
@@ -1245,7 +2254,7 @@
             modalContent.innerHTML = `
                 <div class="cpm-header">
                     <h2>批量自定义导出选项 (${uuids.length} 个会话)</h2>
-                    <button class="cpm-close-button cpm-icon-btn">×</button>
+                    <button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
                 </div>
                 <div class="cpm-settings-content">
                     ${this.createExportSettingsHTML(false)}
@@ -1509,7 +2518,7 @@
             modalContent.className = 'cpm-panel cpm-export-modal-content';
             modalContent.style.display = 'flex';
             modalContent.innerHTML = `
-                <div class="cpm-header"><h2>自定义导出选项</h2><button class="cpm-close-button cpm-icon-btn">×</button></div>
+                <div class="cpm-header"><h2>自定义导出选项</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
                 <div class="cpm-settings-content">
                     ${this.createExportSettingsHTML(false)}
                 </div>
@@ -1533,7 +2542,7 @@
                 overlay.remove();
             };
         },
-        
+
         toggleManagerButtonVisibility() {
             this.isManagerButtonVisible = !this.isManagerButtonVisible;
             const managerButton = document.getElementById('cpm-manager-button');
@@ -1548,11 +2557,15 @@
     // =========================================================================
     // 8. 聊天增强模块 (Enhancer Modules)
     // =========================================================================
-    const BranchEnhancer = {
-        state: { conversationUUID: null, selectedParentMessageUUID: null },
+    const NavigatorEnhancer = {
+        state: {
+            conversationUUID: null,
+            selectedParentMessageUUID: null,
+            currentMode: 'branch' // 'branch' 或 'navigate'
+        },
         init() {
             this.cleanup();
-            this.createBranchButton();
+            this.createNavigatorButton();
         },
         updateState(currentUrl) {
             const pathParts = new URL(currentUrl).pathname.split('/');
@@ -1560,7 +2573,7 @@
             if (!this.state.conversationUUID) this.state.selectedParentMessageUUID = null;
             this.updateStatusIndicator();
         },
-        createBranchButton() {
+        createNavigatorButton() {
             if (document.getElementById('cpm-branch-btn')) return;
             const toolbar = document.querySelector(Config.TOOLBAR_SELECTOR);
             if (!toolbar) return;
@@ -1572,7 +2585,7 @@
             const button = document.createElement('button');
             button.id = 'cpm-branch-btn';
             button.type = 'button';
-            button.title = '从对话历史的任意节点继续';
+            button.title = '从对话历史的任意节点延续&导航至任意节点';
             button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
             button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-tree"></use></svg></div>`;
             button.onclick = () => this.showModal();
@@ -1585,39 +2598,94 @@
             overlay.onclick = () => overlay.remove();
 
             const modalContent = document.createElement('div');
-            modalContent.className = 'cpm-panel cpm-tree-panel-override';
+            modalContent.className = 'cpm-panel cpm-navigator-panel-override';
             modalContent.style.display = 'flex';
             modalContent.onclick = (e) => e.stopPropagation();
             modalContent.innerHTML = `
-                <div class="cpm-header"><h2>选择一个分支起点</h2><button id="cpm-branch-modal-close-btn" class="cpm-icon-btn">×</button></div>
-                <div id="cpm-branch-tree-container" class="cpm-tree-container"></div>`;
+                <div class="cpm-header">
+                    <h2>对话节点延续&导航器</h2>
+                    <button id="cpm-navigator-modal-close-btn" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
+                </div>
+                <div class="cpm-mode-selector">
+                    <button id="cpm-branch-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'branch' ? 'active' : ''}">延续模式</button>
+                    <button id="cpm-navigate-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'navigate' ? 'active' : ''}">导航模式</button>
+                </div>
+                <div id="cpm-navigator-tree-container" class="cpm-tree-container"></div>`;
 
             overlay.appendChild(modalContent);
             document.body.appendChild(overlay);
-            overlay.querySelector('#cpm-branch-modal-close-btn').onclick = () => overlay.remove();
 
-            const treeContainer = modalContent.querySelector('#cpm-branch-tree-container');
+            // 绑定事件
+            overlay.querySelector('#cpm-navigator-modal-close-btn').onclick = () => overlay.remove();
+            overlay.querySelector('#cpm-branch-mode-btn').onclick = () => this.switchMode('branch', modalContent);
+            overlay.querySelector('#cpm-navigate-mode-btn').onclick = () => this.switchMode('navigate', modalContent);
+
+            // 加载内容
+            await this.loadModalContent(modalContent);
+        },
+
+        switchMode(mode, modalContent) {
+            this.state.currentMode = mode;
+            modalContent.querySelector('.cpm-mode-btn.active')?.classList.remove('active');
+            modalContent.querySelector(`#cpm-${mode === 'branch' ? 'branch' : 'navigate'}-mode-btn`).classList.add('active');
+            this.loadModalContent(modalContent);
+        },
+
+        async loadModalContent(modalContent) {
+            const treeContainer = modalContent.querySelector('#cpm-navigator-tree-container');
             if (this.state.conversationUUID) {
                 treeContainer.innerHTML = '<p class="cpm-loading">正在加载对话历史...</p>';
                 try {
-                    const historyData = await ClaudeAPI.getConversationHistory(this.state.conversationUUID);
-                    await SharedLogic.renderTreeView(treeContainer, historyData.chat_messages, {
-                        isForBranching: true,
-                        onNodeClick: (uuid, element) => this.selectBranchPoint(uuid, element)
+                    // 使用智能缓存机制，避免重复请求
+                    await ClaudeAPI.tryInitializeConversationTree();
+
+                    if (!ClaudeAPI.conversationTree) {
+                        throw new Error('无法获取对话数据');
+                    }
+
+                    // 从缓存的对话树获取消息数据
+                    const messages = Object.values(ClaudeAPI.conversationTree.nodes);
+
+                    await SharedLogic.renderTreeView(treeContainer, messages, {
+                        isForBranching: this.state.currentMode === 'branch',
+                        isNavigationMode: this.state.currentMode === 'navigate',
+                        onNodeClick: (uuid, element) => this.handleNodeClick(uuid, element)
                     });
                 } catch (error) {
                     treeContainer.innerHTML = `<p class="cpm-error">加载失败: ${error.message}</p>`;
                 }
             } else {
-                treeContainer.innerHTML = '<p class="cpm-loading">不在具体聊天内，无法从任何节点延续。</p>';
+                treeContainer.innerHTML = '<p class="cpm-loading">不在具体聊天内，无法操作节点。</p>';
             }
         },
+
+        handleNodeClick(uuid, element) {
+            if (this.state.currentMode === 'branch') {
+                // 延续模式：设置分支点
+                this.selectBranchPoint(uuid, element);
+            } else {
+                // 导航模式：直接跳转
+                this.navigateToNode(uuid, element);
+            }
+        },
+
         selectBranchPoint(uuid, element) {
             this.state.selectedParentMessageUUID = uuid;
-            document.querySelectorAll('.cpm-branch-node-selected').forEach(n => n.classList.remove('cpm-branch-node-selected'));
-            element.classList.add('cpm-branch-node-selected');
+            document.querySelectorAll('.cpm-node-selected').forEach(n => n.classList.remove('cpm-node-selected'));
+            element.classList.add('cpm-node-selected');
             this.updateStatusIndicator();
             setTimeout(() => document.querySelector('.cpm-modal-overlay')?.remove(), 300);
+        },
+
+        async navigateToNode(uuid, element) {
+            document.querySelectorAll('.cpm-node-selected').forEach(n => n.classList.remove('cpm-node-selected'));
+            element.classList.add('cpm-node-selected');
+
+            // 立即关闭面板
+            setTimeout(() => document.querySelector('.cpm-modal-overlay')?.remove(), 300);
+
+            // 执行导航（跨分支跳转）
+            LinearNavigator.jumpToNode(uuid);
         },
         updateStatusIndicator() {
             const toolbar = document.querySelector(Config.TOOLBAR_SELECTOR);
@@ -1634,6 +2702,249 @@
         cleanup() {
             document.querySelector('#cpm-branch-btn')?.closest('div.relative.shrink-0').remove();
             document.getElementById('cpm-branch-status-indicator')?.remove();
+        }
+    };
+
+    const LinearNavEnhancer = {
+        ui: null,
+        currentUrl: location.href,
+        refreshTimer: 0,
+        forceRefreshTimer: null,
+        observer: null,
+        isBooting: false,
+
+        init() {
+            this.cleanup();
+            this.createLinearNavigatorButton();
+            // 检查是否需要自动启动面板
+            this.checkAutoStart();
+        },
+
+        cleanup() {
+            document.querySelector('#cpm-ln-linear-navigator-btn')?.closest('div.relative.shrink-0').remove();
+            if (this.ui) {
+                this.ui.destroy();
+                this.ui = null;
+            }
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
+            if (this.forceRefreshTimer) {
+                clearInterval(this.forceRefreshTimer);
+                this.forceRefreshTimer = null;
+            }
+            if (this.refreshTimer) {
+                clearTimeout(this.refreshTimer);
+                this.refreshTimer = 0;
+            }
+        },
+
+        createLinearNavigatorButton() {
+            if (document.getElementById('cpm-ln-linear-navigator-btn')) return;
+            const toolbar = document.querySelector(Config.TOOLBAR_SELECTOR);
+            if (!toolbar) return;
+            const emptyArea = toolbar.querySelector(Config.EMPTY_AREA_SELECTOR);
+            if (!emptyArea) return;
+
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = "relative shrink-0";
+            const button = document.createElement('button');
+            button.id = 'cpm-ln-linear-navigator-btn';
+            button.type = 'button';
+            button.title = '线性导航';
+            button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
+            button.style.fontWeight = "normal";
+            button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px;"><use href="#cpm-ln-icon-linear-navigator"></use></svg></div>`;
+            button.onclick = () => this.toggleLinearNavigator();
+            wrapperDiv.appendChild(button);
+            toolbar.insertBefore(wrapperDiv, emptyArea);
+        },
+
+        checkAutoStart() {
+            // 延迟检查，确保页面元素完全加载
+            const tryAutoStart = (attempt = 0) => {
+                const maxAttempts = 5;
+                const delay = 2000 + (attempt * 1000); // 逐渐增加延迟
+
+                setTimeout(() => {
+                    // 检查页面是否稳定（工具栏存在且没有正在进行清理）
+                    const toolbar = document.querySelector(Config.TOOLBAR_SELECTOR);
+                    const hasButton = document.getElementById('cpm-ln-linear-navigator-btn');
+
+                    if (toolbar && hasButton && StorageManager.getPanelState()) {
+                        // 确保不会与现有的UI冲突
+                        if (!this.ui) {
+                            this.toggleLinearNavigator();
+                        }
+                    } else if (attempt < maxAttempts && toolbar) {
+                        // 如果页面还不稳定但工具栏存在，继续尝试
+                        tryAutoStart(attempt + 1);
+                    }
+                }, delay);
+            };
+
+            tryAutoStart();
+        },
+
+        toggleLinearNavigator() {
+            if (!this.ui) {
+                this.boot();
+            }
+            this.ui.toggle();
+        },
+
+        boot() {
+            if (this.ui || this.isBooting) return;
+            this.isBooting = true;
+
+            try {
+                this.ui = new LinearNavUI().create();
+                this.setupUICallbacks();
+                this.setupObserver();
+                this.setupEventListeners();
+                this.startAutoRefresh();
+            } finally {
+                this.isBooting = false;
+            }
+        },
+
+        setupUICallbacks() {
+            this.ui.onRefresh = () => this.refresh({ ignoreHover: true, force: true });
+            this.ui.onNavigate = (action) => this.navigate(action);
+            this.ui.onItemClick = (id) => this.jumpToItem(id);
+        },
+
+        setupObserver() {
+            if (this.observer) this.observer.disconnect();
+
+            this.observer = new MutationObserver(() => {
+                this.refresh({ delay: Config.refreshInterval });
+            });
+
+            this.observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        },
+
+        setupEventListeners() {
+            // 发送消息后的快速刷新
+            const handleSend = () => this.burstRefresh();
+
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('button[type="submit"], [aria-label*="Send"]')) {
+                    handleSend();
+                }
+            }, true);
+
+            document.addEventListener('keydown', (e) => {
+                const target = e.target;
+                if ((target.tagName === 'TEXTAREA' || target.isContentEditable) &&
+                    e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    handleSend();
+                }
+            }, true);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this.refresh({ force: true });
+            });
+        },
+
+        startAutoRefresh() {
+            if (this.forceRefreshTimer) clearInterval(this.forceRefreshTimer);
+            this.forceRefreshTimer = setInterval(() => {
+                this.refresh({ force: true });
+            }, 10000); // 10秒自动刷新
+        },
+
+        refresh({ delay = 80, force = false, ignoreHover = false } = {}) {
+            if (this.ui && this.ui.isHovered && !ignoreHover) return;
+
+            if (force) {
+                if (this.refreshTimer) {
+                    clearTimeout(this.refreshTimer);
+                    this.refreshTimer = 0;
+                }
+                this.doRefresh();
+                return;
+            }
+
+            if (this.refreshTimer) clearTimeout(this.refreshTimer);
+            this.refreshTimer = setTimeout(() => {
+                this.refreshTimer = 0;
+                this.doRefresh();
+            }, delay);
+        },
+
+        doRefresh() {
+            if (!this.ui) return;
+
+            try {
+                const indexData = LinearTurnIndex.build();
+                this.ui.render(indexData);
+            } catch (e) {
+                console.error('Linear refresh error:', e);
+            }
+        },
+
+        burstRefresh(duration = 6000, interval = 160) {
+            const endTime = Date.now() + duration;
+            const tick = () => {
+                this.refresh({ force: true, ignoreHover: true });
+                if (Date.now() < endTime) {
+                    setTimeout(tick, interval);
+                }
+            };
+            tick();
+        },
+
+        navigate(action) {
+            const indexData = LinearTurnIndex.build();
+            if (!indexData.length) return;
+
+            if (action === 'top' || action === 'bottom') {
+                const turns = ClaudeAPI.findCurrentTurns();
+                if (!turns.length) return;
+
+                const targetTurn = action === 'top' ? turns[0] : turns[turns.length - 1];
+                const topMargin = action === 'bottom' ? -window.innerHeight : Config.topMargin;
+                LinearNavigator.scrollToElement(targetTurn, topMargin);
+
+                if (targetTurn && targetTurn.id) {
+                    setTimeout(() => this.ui.setActive(targetTurn.id), 150);
+                }
+                return;
+            }
+
+            const currentIndex = indexData.findIndex(item => item.id === this.ui.currentActiveId);
+            const delta = action === 'prev' ? -1 : 1;
+            let nextIndex;
+
+            if (currentIndex < 0) {
+                nextIndex = delta > 0 ? 0 : indexData.length - 1;
+            } else {
+                nextIndex = Math.max(0, Math.min(indexData.length - 1, currentIndex + delta));
+            }
+
+            const nextItem = indexData[nextIndex];
+            if (nextItem) {
+                this.jumpToItem(nextItem.id);
+            }
+        },
+
+        jumpToItem(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                this.ui.setActive(id);
+                LinearNavigator.scrollToElement(element);
+            }
+        },
+
+        updateState(currentUrl) {
+            if (currentUrl !== this.currentUrl) {
+                this.currentUrl = currentUrl;
+                if (this.ui && this.ui.isVisible) {
+                    this.refresh({ force: true });
+                }
+            }
         }
     };
 
@@ -1759,7 +3070,7 @@
                     this.removeStagedFile(uuidToDelete);
                 });
 
-                this.panelObserver = new MutationObserver((mutations) => {
+                this.panelObserver = new MutationObserver(() => {
                     if (!document.getElementById(Config.ATTACHMENT_PANEL_ID)) {
                         this.clearStagedFiles();
                         this.panelObserver.disconnect();
@@ -1915,7 +3226,7 @@
                     }
                 }
 
-                if (url.includes('/completion') && (AttachmentEnhancer.state.stagedAttachments.length > 0 || BranchEnhancer.state.selectedParentMessageUUID)) {
+                if (url.includes('/completion') && (AttachmentEnhancer.state.stagedAttachments.length > 0 || NavigatorEnhancer.state.selectedParentMessageUUID)) {
                     console.groupCollapsed(`%c${LOG_PREFIX} 请求注入: 正在处理/completion...`, 'color: #8b5cf6; font-weight: bold;');
                     if (options.body && typeof options.body === 'string') {
                         try {
@@ -1934,11 +3245,11 @@
                                 console.log("附件注入完成，暂存区已清空。");
                             }
 
-                            if (BranchEnhancer.state.selectedParentMessageUUID) {
+                            if (NavigatorEnhancer.state.selectedParentMessageUUID) {
                                 console.log("执行分支注入...");
-                                payload.parent_message_uuid = BranchEnhancer.state.selectedParentMessageUUID;
-                                BranchEnhancer.state.selectedParentMessageUUID = null;
-                                setTimeout(() => BranchEnhancer.updateStatusIndicator(), 0);
+                                payload.parent_message_uuid = NavigatorEnhancer.state.selectedParentMessageUUID;
+                                NavigatorEnhancer.state.selectedParentMessageUUID = null;
+                                setTimeout(() => NavigatorEnhancer.updateStatusIndicator(), 0);
                                 console.log("分支注入完成。");
                             }
 
@@ -1958,6 +3269,10 @@
         },
         onPageChange() {
             const currentUrl = location.href;
+
+            // 检测对话切换
+            ClaudeAPI.checkConversationChange();
+
             if (currentUrl === this.lastUrl && document.getElementById('cpm-manager-button')) {
                 if(document.querySelector(Config.TOOLBAR_SELECTOR) && !document.getElementById('cpm-branch-btn')) {
                     this.setupEnhancers(currentUrl);
@@ -1979,12 +3294,15 @@
         setupEnhancers(currentUrl) {
             const toolbar = document.querySelector(Config.TOOLBAR_SELECTOR);
             if (toolbar) {
-                BranchEnhancer.init();
+                NavigatorEnhancer.init();
                 AttachmentEnhancer.init();
-                BranchEnhancer.updateState(currentUrl);
+                LinearNavEnhancer.init();
+                NavigatorEnhancer.updateState(currentUrl);
+                LinearNavEnhancer.updateState(currentUrl);
             } else {
-                BranchEnhancer.cleanup();
+                NavigatorEnhancer.cleanup();
                 AttachmentEnhancer.cleanup();
+                LinearNavEnhancer.cleanup();
             }
         }
     };
@@ -2004,6 +3322,7 @@
             --cpm-highlight-orange: 31 56% 61%; --cpm-brand-orange-base: 19 58% 55%; --cpm-always-black: 0 0% 0%;
             --cpm-sender-you-color: #15803d; --cpm-sender-claude-color: #1d4ed8;
             --cpm-branch-hover-bg: rgba(93, 93, 255, 0.2); --cpm-branch-selected-bg: #43a047; --cpm-branch-selected-text: white;
+            --cpm-mode-active: #2563eb; --cpm-mode-inactive: #6b7280;
         }
         body[cpm-theme='light'] #cpm-back-to-main,
         body[cpm-theme='light'] #cpm-batch-export-now-btn {
@@ -2095,6 +3414,7 @@
 
         /* --- TREE VIEW --- */
         .cpm-tree-panel-override { width: 90vw; max-width: 1200px; height: 90vh; }
+        .cpm-navigator-panel-override { width: 90vw; max-width: 1200px; height: 90vh; }
         .cpm-tree-container { flex-grow: 1; overflow-y: auto; overflow-x: auto; padding: 20px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; background-color: hsl(var(--cpm-bg-200)); }
         .cpm-tree-node { margin-bottom: 10px; border-radius: 6px; min-width: fit-content; }
         .cpm-tree-node-header { margin: 0 0 5px 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: nowrap; padding: 4px; white-space: nowrap; }
@@ -2110,7 +3430,7 @@
         .cpm-attachment-details { color: hsl(var(--cpm-text-400)); }
         .cpm-attachment-url { color: hsl(var(--cpm-accent-secondary-100)); text-decoration: none; }
         .cpm-attachment-url:hover { text-decoration: underline; }
-        
+
         /* --- DIRTY DATA NODE STYLES --- */
         .cpm-dirty-node .cpm-tree-node-id { color: hsl(var(--cpm-danger-000)) !important; }
         .cpm-dirty-node .cpm-tree-node-sender { color: hsl(var(--cpm-danger-000)) !important; }
@@ -2119,10 +3439,23 @@
         #cpm-branch-status-indicator { background-color: var(--cpm-branch-selected-bg); color: var(--cpm-branch-selected-text); padding: 2px 8px; font-size: 12px; border-radius: 12px; margin-left: 8px; font-weight: 500; animation: cpm-fadeIn 0.3s ease; }
         @keyframes cpm-fadeIn { from { opacity: 0; } to { opacity: 1; } }
         #cpm-branch-from-root-btn { border: 1px dashed hsl(var(--cpm-border-300)); padding: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; color: hsl(var(--cpm-text-200)); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-        .cpm-branch-node-clickable { cursor: pointer; transition: background-color 0.2s; }
-        .cpm-branch-node-clickable:hover, #cpm-branch-from-root-btn:hover { background-color: var(--cpm-branch-hover-bg); }
-        .cpm-branch-node-selected, #cpm-branch-from-root-btn.cpm-branch-node-selected { background-color: var(--cpm-branch-selected-bg) !important; color: var(--cpm-branch-selected-text) !important; }
-        .cpm-branch-node-selected .cpm-tree-node-sender, .cpm-branch-node-selected .cpm-tree-node-preview, .cpm-branch-node-selected .cpm-tree-node-id { color: var(--cpm-branch-selected-text) !important; }
+        .cpm-node-clickable { cursor: pointer; transition: background-color 0.2s; }
+        .cpm-node-clickable:hover, #cpm-branch-from-root-btn:hover { background-color: var(--cpm-branch-hover-bg); }
+        .cpm-node-selected, #cpm-branch-from-root-btn.cpm-node-selected { background-color: var(--cpm-branch-selected-bg) !important; color: var(--cpm-branch-selected-text) !important; }
+        .cpm-node-selected .cpm-tree-node-sender, .cpm-node-selected .cpm-tree-node-preview, .cpm-node-selected .cpm-tree-node-id { color: var(--cpm-branch-selected-text) !important; }
+
+        /* --- MODE SELECTOR --- */
+        .cpm-mode-selector { display: flex; gap: 8px; padding: 12px 20px; border-bottom: 1px solid hsl(var(--cpm-border-200)); }
+        .cpm-mode-btn { padding: 8px 16px; border: 1px solid hsl(var(--cpm-border-300)); background: transparent; color: var(--cpm-mode-inactive); border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500; }
+        .cpm-mode-btn:hover { background-color: hsl(var(--cpm-bg-200)); }
+        .cpm-mode-btn.active { background-color: var(--cpm-mode-active); color: white; border-color: var(--cpm-mode-active); }
+
+        /* --- 高亮动画 --- */
+        .highlight-pulse { animation: cpm-highlight-pulse 3s ease-out; }
+        @keyframes cpm-highlight-pulse {
+            0%, 100% { background-color: rgba(255, 243, 205, 0); }
+            20% { background-color: rgba(255, 243, 205, 1); }
+        }
         #cpm-attachment-power-menu .bg-bg-000 { background-color: hsl(var(--cpm-bg-000)); }
         #cpm-attachment-power-menu .text-text-200 { color: hsl(var(--cpm-text-200)); }
         #cpm-attachment-power-menu .text-text-300 { color: hsl(var(--cpm-text-300)); }
@@ -2206,6 +3539,179 @@
             width: 12px;
             height: 12px;
         }
+
+        /* --- LINEAR NAVIGATION UI --- */
+        /* 基础容器 */
+        #cpm-ln-nav {
+            position: fixed;
+            top: 120px;
+            right: 20px;
+            width: auto;
+            min-width: 80px;
+            max-width: 210px;
+            z-index: 2147483647 !important;
+            font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            background-color: hsl(var(--cpm-bg-100));
+            border: 1px solid hsl(var(--cpm-border-300));
+            border-radius: 8px;
+            box-shadow: 0 10px 25px hsla(var(--cpm-text-000), 0.15);
+        }
+        #cpm-ln-nav.visible { opacity: 1; transform: translateY(0); }
+        #cpm-ln-nav * { user-select: none; }
+
+        /* 头部区域 */
+        .cpm-ln-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            cursor: move;
+            min-width: 100px;
+            border-bottom: 1px solid hsl(var(--cpm-border-200));
+        }
+
+        .cpm-ln-title {
+            font: 600 11px/1 inherit;
+            color: hsl(var(--cpm-text-200));
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .cpm-ln-title svg { width: 12px; height: 12px; }
+
+        .cpm-ln-close, .cpm-ln-refresh {
+            width: 22px;
+            height: 22px;
+            font-size: 14px;
+            background: none;
+            border: none;
+            color: hsl(var(--cpm-text-400));
+            cursor: pointer;
+            padding: 3px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cpm-ln-close:hover, .cpm-ln-refresh:hover {
+            color: hsl(var(--cpm-text-100));
+            background-color: hsl(var(--cpm-bg-200));
+        }
+
+        /* 列表区域 */
+        .cpm-ln-list {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+        }
+        .cpm-ln-list::-webkit-scrollbar { width: 3px; }
+        .cpm-ln-list::-webkit-scrollbar-thumb {
+            background: hsla(var(--cpm-text-400), 0.3);
+            border-radius: 2px;
+        }
+        .cpm-ln-list::-webkit-scrollbar-thumb:hover {
+            background: hsla(var(--cpm-text-400), 0.5);
+        }
+
+        /* 列表项 */
+        .cpm-ln-item {
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 12px;
+            min-height: 24px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: auto;
+            min-width: 60px;
+            max-width: 190px;
+            background-color: hsl(var(--cpm-bg-200));
+        }
+        .cpm-ln-item:hover {
+            transform: translateX(2px);
+            box-shadow: 0 2px 6px hsla(var(--cpm-always-black), 0.12);
+            background-color: hsl(var(--cpm-bg-300));
+        }
+
+        /* 用户/助手样式 */
+        .cpm-ln-item.user {
+            color: hsl(var(--cpm-accent-secondary-100));
+            border-left: 3px solid hsl(var(--cpm-accent-secondary-100));
+            font-weight: 500;
+        }
+        .cpm-ln-item.assistant {
+            color: hsl(var(--cpm-accent-brand));
+            border-left: 3px solid hsl(var(--cpm-accent-brand));
+            font-weight: 500;
+        }
+        .cpm-ln-item.active {
+            border: 2px solid hsl(var(--cpm-accent-pro-100));
+            box-shadow: 0 2px 8px hsla(var(--cpm-accent-pro-100), 0.2);
+            background-color: hsl(var(--cpm-bg-400));
+        }
+
+        .cpm-ln-number {
+            margin-right: 4px;
+            font: 600 11px/1 inherit;
+            color: hsl(var(--cpm-text-400));
+        }
+
+        .cpm-ln-empty {
+            padding: 10px;
+            text-align: center;
+            color: hsl(var(--cpm-text-400));
+            font-size: 11px;
+            min-height: 20px;
+        }
+
+        /* 上下置顶置底按钮 */
+        .cpm-ln-footer {
+            margin-top: 8px;
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            border-top: 1px solid hsl(var(--cpm-border-200));
+        }
+
+        /* 导航按钮统一样式（四个按钮共用） */
+        .cpm-ln-nav-btn {
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            color: hsl(var(--cpm-text-300));
+            background: hsl(var(--cpm-bg-200));
+            border: 1px solid hsl(var(--cpm-border-300));
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        .cpm-ln-nav-btn .cpm-svg-icon {
+            width: 14px;
+            height: 14px;
+        }
+        .cpm-ln-nav-btn:hover {
+            color: hsl(var(--cpm-text-100));
+            border-color: hsl(var(--cpm-accent-secondary-100));
+            background-color: hsl(var(--cpm-bg-300));
+        }
+
     `);
 
 
