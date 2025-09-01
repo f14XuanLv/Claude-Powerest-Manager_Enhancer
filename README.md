@@ -12,9 +12,8 @@
 这是一款功能极其强大的 Tampermonkey 脚本，旨在全方位提升您的 Claude 使用体验。它集成了两大核心模块：一个全面的**对话管理器**和一个实时的**聊天增强器**，为您提供前所未有的控制力和便利性。
 
 | 脚本主界面预览 |
-|-------------|
-| <video width="100%" controls><source src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/videos/main-preview.mp4" type="video/mp4">您的浏览器不支持视频播放。</video> |
-
+|-----------|
+| ![脚本主界面预览](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/main-preview.gif) |
 
 
 | 管理器面板（自动重命名） |
