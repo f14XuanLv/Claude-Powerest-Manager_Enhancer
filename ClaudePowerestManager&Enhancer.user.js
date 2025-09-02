@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.2.1
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
@@ -22,10 +22,11 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.0]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.1]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
+    // 全局HTML转义函数 - 统一的转义实现
     function escapeHTML(str) {
         if (!str) return '';
         return str.replace(/[&<>"']/g, function(match) {
@@ -37,6 +38,12 @@
                 "'": '&#39;'
             }[match];
         });
+    }
+
+    // 全局字符串分割工具函数 - 避免原型污染
+    function rsplit(str, sep, maxsplit) {
+        const split = str.split(sep);
+        return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
     }
 
     // =========================================================================
@@ -187,9 +194,15 @@
     const ThemeManager = {
         init() {
             this.applyCurrentTheme();
-            const observer = new MutationObserver(() => this.applyCurrentTheme());
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+            this.observer = new MutationObserver(() => this.applyCurrentTheme());
+            this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
             console.log(LOG_PREFIX, "主题管理器已初始化并开始监听。");
+        },
+        cleanup() {
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
         },
         applyCurrentTheme() {
             const mode = GM_getValue('themeMode', 'auto');
@@ -244,13 +257,6 @@
                 width += charWidth;
             }
             return result || text.slice(0, maxLength);
-        },
-        escapeHtml(str) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-            return (str || '').replace(/[&<>"']/g, m => map[m]);
-        },
-        escapeAttr(str) {
-            return this.escapeHtml(str).replace(/"/g, '&quot;');
         }
     };
 
@@ -338,10 +344,6 @@
             return messages; // 返回包含脏数据标记的完整消息列表
         },
 
-        // 获取清洁数据（不包含脏数据的消息列表）
-        getCleanMessages(messages) {
-            return messages.filter(msg => !msg._isDirtyData);
-        },
 
         buildConversationTree(messages) {
             const nodes = {};
@@ -1265,15 +1267,15 @@
                 if (hasAttachmentFormat) {
                     node.innerHTML = `
                         <span class="cpm-ln-number">${item.idx + 1}.</span>
-                        <span class="cpm-ln-text" title="${TextUtils.escapeAttr(item.preview)}" style="display:inline-flex;align-items:center;white-space:nowrap;">
-                            <svg class="cpm-svg-icon" style="width:12px;height:12px;margin-right:3px;vertical-align:middle;"><use href="#cpm-ln-icon-paperclip"></use></svg>${TextUtils.escapeHtml(item.preview)}
+                        <span class="cpm-ln-text" title="${escapeHTML(item.preview)}" style="display:inline-flex;align-items:center;white-space:nowrap;">
+                            <svg class="cpm-svg-icon" style="width:12px;height:12px;margin-right:3px;vertical-align:middle;"><use href="#cpm-ln-icon-paperclip"></use></svg>${escapeHTML(item.preview)}
                         </span>
                     `;
                 } else {
                     node.innerHTML = `
                         <span class="cpm-ln-number">${item.idx + 1}.</span>
-                        <span class="cpm-ln-text" title="${TextUtils.escapeAttr(item.preview)}">
-                            ${TextUtils.escapeHtml(item.preview)}
+                        <span class="cpm-ln-text" title="${escapeHTML(item.preview)}">
+                            ${escapeHTML(item.preview)}
                         </span>
                     `;
                 }
@@ -1397,7 +1399,7 @@
                             } else if (file.file_kind === 'blob' && orgUuid && file.file_uuid) { // **新增**: 处理 blob 类型
                                 fullUrl = `${baseUrl}/api/organizations/${orgUuid}/files/${file.file_uuid}/contents`;
                             } else if (orgUuid && file.file_uuid && file.file_name) { // 回退到旧的文档格式
-                                const ext = file.file_name.includes('.') ? file.file_name.rsplit('.', 1)[1] : '';
+                                const ext = file.file_name.includes('.') ? rsplit(file.file_name, '.', 1)[1] : '';
                                 if (ext) fullUrl = `${baseUrl}/api/${orgUuid}/files/${file.file_uuid}/document_${ext.replace('.','')}/${file.file_name}`;
                             }
 
@@ -1413,13 +1415,31 @@
                 const dirtyClass = isDirtyNode ? ' cpm-dirty-node' : '';
                 const dirtyLabel = isDirtyNode ? ' [脏数据]' : '';
 
-                nodeElement.innerHTML = `
-                    <div class="cpm-tree-node-header${dirtyClass}">
-                        <span class="cpm-tree-node-id">[${node.tree_id}]</span>
-                        <span class="cpm-tree-node-sender sender-${sender.toLowerCase()}">${sender}${retryMarker}${dirtyLabel}:</span>
-                        <span class="cpm-tree-node-preview">${preview || '[仅包含附件或工具使用]'}</span>
-                    </div>
-                    ${attachmentsHTML}`;
+                // 使用现代化DOM操作，避免HTML注入
+                const header = document.createElement('div');
+                header.className = `cpm-tree-node-header${dirtyClass}`;
+
+                const idSpan = document.createElement('span');
+                idSpan.className = 'cpm-tree-node-id';
+                idSpan.textContent = `[${node.tree_id}]`;
+
+                const senderSpan = document.createElement('span');
+                senderSpan.className = `cpm-tree-node-sender sender-${sender.toLowerCase()}`;
+                senderSpan.textContent = `${sender}${retryMarker}${dirtyLabel}:`;
+
+                const previewSpan = document.createElement('span');
+                previewSpan.className = 'cpm-tree-node-preview';
+                previewSpan.textContent = preview || '[仅包含附件或工具使用]';
+
+                header.append(idSpan, senderSpan, previewSpan);
+                nodeElement.appendChild(header);
+
+                // 附件HTML部分仍需要innerHTML（因为包含复杂HTML结构）
+                if (attachmentsHTML) {
+                    const attachmentsDiv = document.createElement('div');
+                    attachmentsDiv.innerHTML = attachmentsHTML;
+                    nodeElement.appendChild(attachmentsDiv);
+                }
 
                 // 根据模式决定哪些节点可以点击（脏数据节点不可点击）
                 const isClickable = !isDirtyNode && (isNavigationMode ? true : (isForBranching && node.sender === 'assistant'));
@@ -1507,7 +1527,7 @@
                             } else if (file.file_kind === 'blob' && orgInfo.uuid && file.file_uuid) { // **新增**: 处理 blob 类型
                                 downloadUrl = `/api/organizations/${orgInfo.uuid}/files/${file.file_uuid}/contents`;
                             } else if (orgInfo.uuid && file.file_uuid && file.file_name) { // 回退到旧的文档格式
-                               const ext = file.file_name.includes('.') ? file.file_name.rsplit('.', 1)[1] : '';
+                               const ext = file.file_name.includes('.') ? rsplit(file.file_name, '.', 1)[1] : '';
                                downloadUrl = `/api/${orgInfo.uuid}/files/${file.file_uuid}/document_${ext.replace('.','')}/${file.file_name}`;
                             }
 
@@ -2033,7 +2053,7 @@
             const originalTitle = titleSpan.textContent.replace(/★/g, '').trim();
             li.dataset.originalDetails = detailsDiv.innerHTML;
             li.dataset.originalActions = actionsDiv.innerHTML;
-            detailsDiv.innerHTML = `<input type="text" class="cpm-edit-input" value="${TextUtils.escapeAttr(originalTitle)}">`;
+            detailsDiv.innerHTML = `<input type="text" class="cpm-edit-input" value="${escapeHTML(originalTitle)}">`;
             actionsDiv.innerHTML = `<button class="cpm-icon-btn cpm-action-save" title="保存"><svg class="cpm-svg-icon"><use href="#cpm-icon-save"></use></svg></button><button class="cpm-icon-btn cpm-action-cancel" title="取消"><svg class="cpm-svg-icon"><use href="#cpm-icon-cancel"></use></svg></button>`;
             const input = detailsDiv.querySelector('.cpm-edit-input');
             input.focus();
@@ -2272,12 +2292,17 @@
             overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
             modalContent.querySelector('.cpm-close-button').onclick = () => overlay.remove();
             modalContent.querySelector('#cpm-batch-export-now-btn').onclick = async () => {
-                const currentSettings = this.getExportSettings(modalContent);
-                this.tempBatchExportSettings = currentSettings;
-                modalContent.querySelector('#cpm-batch-export-now-btn').disabled = true;
-                modalContent.querySelector('#cpm-batch-export-now-btn').textContent = '准备导出...';
-                overlay.remove();
-                await this.performBatchExportCustom(uuids);
+                try {
+                    const currentSettings = this.getExportSettings(modalContent);
+                    this.tempBatchExportSettings = currentSettings;
+                    modalContent.querySelector('#cpm-batch-export-now-btn').disabled = true;
+                    modalContent.querySelector('#cpm-batch-export-now-btn').textContent = '准备导出...';
+                    overlay.remove();
+                    await this.performBatchExportCustom(uuids);
+                } catch (error) {
+                    console.error(`${LOG_PREFIX} 批量导出失败:`, error);
+                    this.updateStatus(`批量导出失败: ${error.message}`, 'error');
+                }
             };
         },
         async performBatchExportCustom(uuids) {
@@ -2535,11 +2560,18 @@
             overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
             modalContent.querySelector('.cpm-close-button').onclick = () => overlay.remove();
             modalContent.querySelector('#cpm-export-now-btn').onclick = async () => {
-                const currentSettings = this.getExportSettings(modalContent);
-                modalContent.querySelector('#cpm-export-now-btn').disabled = true;
-                modalContent.querySelector('#cpm-export-now-btn').textContent = '正在导出...';
-                await ManagerService.performExportCustom(uuid, currentSettings, this.updateStatus.bind(this));
-                overlay.remove();
+                try {
+                    const currentSettings = this.getExportSettings(modalContent);
+                    modalContent.querySelector('#cpm-export-now-btn').disabled = true;
+                    modalContent.querySelector('#cpm-export-now-btn').textContent = '正在导出...';
+                    await ManagerService.performExportCustom(uuid, currentSettings, this.updateStatus.bind(this));
+                    overlay.remove();
+                } catch (error) {
+                    console.error(`${LOG_PREFIX} 导出失败:`, error);
+                    this.updateStatus(`导出失败: ${error.message}`, 'error');
+                    modalContent.querySelector('#cpm-export-now-btn').disabled = false;
+                    modalContent.querySelector('#cpm-export-now-btn').textContent = '立即导出';
+                }
             };
         },
 
@@ -3259,13 +3291,50 @@
                     }
                 }
 
-                return originalFetch.apply(this, args);
+                // 执行原始请求
+                const response = originalFetch.apply(this, args);
+                
+                // 拦截 /completion 和 /retry_completion 的响应
+                if (url.includes('/completion') || url.includes('/retry_completion')) {
+                    return response.then(async (originalResponse) => {
+                        try {
+                            // 检查响应是否成功
+                            if (originalResponse.ok) {
+                                console.log(`%c${LOG_PREFIX} 响应拦截: ${url.includes('/retry_completion') ? '/retry_completion' : '/completion'} 请求成功完成`, 'color: #10b981; font-weight: bold;');
+                                
+                                // 延迟清除对话树缓存，确保服务器端数据已更新完成
+                                setTimeout(() => {
+                                    ClaudeAPI.isInitialized = false;
+                                    ClaudeAPI.conversationTree = null;
+                                    ClaudeAPI.currentLinearBranch = null;
+                                    console.log(`%c${LOG_PREFIX} 已清除对话树缓存，下次导航器访问时将重新获取最新数据`, 'color: #10b981;');
+                                }, 500); // 延迟500ms，等待服务器处理完成
+                            }
+                        } catch (error) {
+                            console.warn(`${LOG_PREFIX} 响应处理时出错:`, error);
+                        }
+                        
+                        return originalResponse;
+                    }).catch((error) => {
+                        console.error(`${LOG_PREFIX} 请求失败:`, error);
+                        throw error;
+                    });
+                }
+                
+                return response;
             };
         },
         startObserver() {
             this.observer = new MutationObserver(() => this.onPageChange());
             this.observer.observe(document.body, { childList: true, subtree: true });
             this.onPageChange();
+        },
+        cleanup() {
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
+            ThemeManager.cleanup();
         },
         onPageChange() {
             const currentUrl = location.href;
@@ -3718,10 +3787,6 @@
     // =========================================================================
     // 11. 辅助工具 & 启动脚本
     // =========================================================================
-    String.prototype.rsplit = function(sep, maxsplit) {
-        const split = this.split(sep);
-        return maxsplit ? [ split.slice(0, -maxsplit).join(sep) ].concat(split.slice(-maxsplit)) : split;
-    };
 
     App.init();
 
