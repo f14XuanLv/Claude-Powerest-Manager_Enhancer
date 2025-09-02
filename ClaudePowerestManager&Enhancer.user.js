@@ -3551,7 +3551,7 @@
             max-width: 210px;
             z-index: 2147483647 !important;
             font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-            pointer-events: auto;
+            pointer-events: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
             opacity: 0;
@@ -3562,7 +3562,7 @@
             border-radius: 8px;
             box-shadow: 0 10px 25px hsla(var(--cpm-text-000), 0.15);
         }
-        #cpm-ln-nav.visible { opacity: 1; transform: translateY(0); }
+        #cpm-ln-nav.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
         #cpm-ln-nav * { user-select: none; }
 
         /* 头部区域 */
