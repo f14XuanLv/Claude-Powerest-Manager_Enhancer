@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.2.1
+// @version      1.2.2
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.1]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.2]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -47,7 +47,547 @@
     }
 
     // =========================================================================
-    // 0. 全局配置
+    // 0. 国际化配置和翻译函数
+    // =========================================================================
+    const I18N_CONFIG = {
+        currentLang: GM_getValue('language', 'zh'),
+        translations: {
+            zh: {
+                // Manager 相关
+                'manager.title': 'Manager',
+                'manager.refresh': '刷新列表',
+                'manager.selectAll': '全选',
+                'manager.selectNone': '全不选',
+                'manager.selectInvert': '反选',
+                'manager.batchStar': '批量收藏',
+                'manager.batchUnstar': '批量取消收藏',
+                'manager.batchRename': '批量自动重命名',
+                'manager.batchDelete': '批量删除',
+                'manager.loading': '正在加载会话列表...',
+                'manager.noResults': '没有符合条件的会话。',
+                'manager.ready': '准备就绪。',
+                'manager.refreshButtonTip': '点击刷新按钮 ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) 加载会话列表。',
+                
+                // Settings 相关
+                'settings.title': '管理器设置',
+                'settings.theme': '外观设置',
+                'settings.themeMode': '脚本主题:',
+                'settings.themeAuto': '跟随网站',
+                'settings.themeLight': '锁定白天',
+                'settings.themeDark': '锁定黑夜',
+                'settings.batchOps': '批量操作设置',
+                'settings.exportDefaults': '自定义导出默认设置',
+                'settings.save': '保存设置',
+                'settings.saved': '设置已保存！',
+                'settings.backToMain': '返回主面板',
+                'settings.language': '语言设置',
+                'settings.interfaceLanguage': '界面语言:',
+                
+                // Navigator 相关
+                'navigator.title': '对话节点延续&导航器',
+                'navigator.branchMode': '延续模式',
+                'navigator.navigateMode': '导航模式',
+                'navigator.branchSelected': '分支点已选定',
+                'navigator.loading': '正在加载对话历史...',
+                'navigator.branchFromRoot': '从根节点开始 (创建一个新的主分支)',
+                
+                // Linear Navigator 相关
+                'linear.title': '线性导航',
+                'linear.refresh': '刷新对话列表',
+                'linear.close': '关闭线性导航',
+                'linear.top': '回到顶部',
+                'linear.bottom': '回到底部',
+                'linear.prev': '上一条',
+                'linear.next': '下一条',
+                'linear.empty': '暂无线性对话',
+                
+                // Attachment 相关
+                'attachment.title': 'PDF深度解析暂存区',
+                'attachment.forceMode': 'Force PDF Deep Analysis',
+                'attachment.close': '关闭并清空所有暂存文件',
+                
+                // Export 相关
+                'export.original': '原始JSON导出',
+                'export.custom': '自定义JSON导出',
+                'export.batchOriginal': '批量原始JSON导出',
+                'export.batchCustom': '批量自定义JSON导出',
+                'export.selectFolder': '正在请求文件夹权限...',
+                'export.complete': '导出完成！',
+                
+                // Tree view 相关
+                'tree.preview': '对话树预览',
+                'tree.loading': '正在加载对话树...',
+                'tree.empty': '这是一个空对话',
+                'tree.emptyForBranching': '，无法选择节点',
+                
+                // Common 相关
+                'common.confirm': '确定',
+                'common.cancel': '取消',
+                'common.close': '关闭',
+                'common.save': '保存',
+                'common.loading': '加载中...',
+                'common.error': '错误',
+                'common.success': '成功',
+                'common.failed': '失败',
+                
+                // Sorting & Filtering
+                'sort.updatedDesc': '时间降序',
+                'sort.updatedAsc': '时间升序',
+                'sort.nameAsc': '名称 A-Z',
+                'sort.nameDesc': '名称 Z-A',
+                'filter.all': '显示全部',
+                'filter.starred': '仅显示收藏',
+                'filter.unstarred': '隐藏收藏',
+                'filter.asciiOnly': '仅显示纯ASCII标题',
+                'filter.nonAscii': '不显示纯ASCII标题',
+                
+                // Button tooltips
+                'tooltip.managerButton': 'Tips: Ctrl + M 可以隐藏此按钮',
+                'tooltip.navigatorButton': '从对话历史的任意节点延续&导航至任意节点',
+                'tooltip.linearNavButton': '线性导航',
+                'tooltip.pdfButton': '打开PDF上传设置',
+                'tooltip.pdfHelp': '此功能为普通账户设计，可强制使用高级解析路径。Pro/Team账户原生支持，此开关对其无效。',
+                'tooltip.settingsButton': '设置',
+                'tooltip.githubLink': '查看 GitHub 仓库',
+                'tooltip.studioLink': '了解下一个项目: claude-dialog-tree-studio',
+                'pdf.forceModeText': 'Force PDF Deep Analysis',
+                
+                // Toolbar labels
+                'toolbar.sort': '排序:',
+                'toolbar.filter': '筛选:',
+                'toolbar.searchPlaceholder': '搜索标题...',
+                
+                // Batch operations detailed settings
+                'batchOps.starUnstar': '批量收藏/取消收藏',
+                'batchOps.refreshAfterStar': '操作后从服务器刷新列表 (否则仅更新当前视图)',
+                'batchOps.batchDelete': '批量删除',
+                'batchOps.refreshAfterDelete': '操作后从服务器刷新列表 (否则仅更新当前视图)',
+                'batchOps.autoRename': '批量自动重命名',
+                'batchOps.titleLanguage': '标题语言:',
+                'batchOps.titleLanguagePlaceholder': '例如：中文, English, 日本語',
+                'batchOps.maxRounds': '使用对话轮数 (最多):',
+                'batchOps.refreshAfterRename': '操作后从服务器刷新列表 (否则仅更新当前视图)',
+                
+                // Export settings
+                'exportSettings.customOptions': '自定义导出选项',
+                'exportSettings.batchCustomOptions': '批量自定义导出选项',
+                'exportSettings.exportNow': '立即导出',
+                'exportSettings.batchExportNow': '开始批量导出',
+                'exportSettings.basicInfo': '基础信息',
+                'exportSettings.messageStructure': '消息结构',
+                'exportSettings.timestampInfo': '时间戳信息',
+                'exportSettings.coreContent': '核心内容',
+                'exportSettings.advancedContent': '高级内容',
+                'exportSettings.keepMetadata': '保留会话元数据',
+                'exportSettings.title': '标题 (name)',
+                'exportSettings.summary': '摘要 (summary)',
+                'exportSettings.sessionTimestamp': '会话创建/更新时间',
+                'exportSettings.sessionSettings': '会话设置 (settings)',
+                'exportSettings.sender': '发送者 (sender)',
+                'exportSettings.messageUuids': '消息/父级UUID (建议保留)',
+                'exportSettings.otherMeta': '其他元数据 (index, stop_reason等)',
+                'exportSettings.messageTimestamp': '消息节点时间戳 (created_at/updated_at)',
+                'exportSettings.contentTimestamp': '内容块流式时间戳 (start/stop)',
+                'exportSettings.attachmentTimestamp': '附件创建时间戳',
+                'exportSettings.textContent': '文本内容 (text块)',
+                'exportSettings.attachmentInfo': '附件信息:',
+                'exportSettings.attachmentFull': '完整信息 (含提取文本)',
+                'exportSettings.attachmentMetaOnly': '仅元数据 (文件名,大小等)',
+                'exportSettings.attachmentNone': '不保留附件',
+                'exportSettings.thinkingProcess': "'思考'过程 (thinking块)",
+                'exportSettings.toolRecords': '保留工具使用记录',
+                'exportSettings.webSearch': '网页搜索 (web_search)',
+                'exportSettings.codeAnalysis': '代码分析 (repl)',
+                'exportSettings.artifactCreation': '工件创建 (artifacts)',
+                'exportSettings.otherTools': '其他未知工具',
+                'exportSettings.successfulOnly': '仅保留成功的工具调用',
+                
+                // Export status messages
+                'exportStatus.customComplete': '自定义导出完成！',
+                'exportStatus.customFailed': '自定义导出失败',
+                'exportStatus.batchPreparing': '准备批量自定义导出',
+                'exportStatus.batchComplete': '批量自定义导出完成',
+                'exportStatus.sessions': '个会话',
+                
+                // Action button tooltips
+                'action.manualRename': '手动重命名',
+                'action.previewTree': '预览对话树',
+                'action.originalExport': '原始JSON导出',
+                'action.customExport': '自定义JSON导出',
+                
+                // Status messages
+                'status.savingTitle': '正在保存新标题...',
+                'status.saveSuccess': '保存成功！',
+                'status.saveFailed': '保存失败',
+                'status.loadedSessions': '已加载',
+                'status.loadSessionsFailed': '加载会话失败',
+                'status.loadFailed': '加载失败',
+                
+                // Error messages
+                'error.cannotLoadTree': '无法加载对话树',
+                
+                // Tree view related
+                'treeView.prefix': '对话树: ',
+                'treeView.untitled': '无标题',
+                'treeView.loading': '加载中...',
+                'treeView.loadFailed': '无法加载对话树',
+                
+                // Additional status and error messages
+                'error.invalidTitle': '生成了无效标题。',
+                'error.loadSessionsFailed': '加载会话失败',
+                'error.selectSessions': '请选择要执行"{0}"的会话。',
+                'error.selectExportSessions': '请选择要导出的会话。',
+                'error.browserNotSupported': '您的浏览器不支持 File System Access API。',
+                'status.refreshingFromServer': ' 正在从服务器刷新列表...',
+                'status.preparingExport': '准备导出...',
+                'status.exporting': '正在导出...',
+                'status.ready': '准备就绪。',
+                'navigator.loadingHistory': '正在加载对话历史...',
+                'navigator.notInChat': '不在具体聊天内，无法操作节点。',
+                'attachment.title': 'PDF深度解析暂存区',
+                'attachment.removeFile': '移除文件',
+                'attachment.clickPreview': '点击预览',
+                'attachment.openInNewTab': '点击在新标签页打开',
+                'navigator.clickToNavigate': '点击导航到此节点',
+                'navigator.clickToContinue': '点击从此节点继续对话',
+                'navigator.nextMessageFrom': '下条消息将从指定节点开始。',
+                'batchOps.confirmDelete': '确定永久删除 {0} 个会话吗？',
+                'status.batchProcessing': '正在批量{0} {1} 个会话...',
+                'status.batchItemProcessing': '正在{0} {1}/{2}...',
+                'status.batchItemFailed': '第{0}个失败',
+                'status.batchOperationComplete': '操作完成。成功{0} {1}/{2} 个会话。',
+                'status.batchOperationFailed': '批量{0}失败',
+                'status.batchExportPreparing': '准备批量导出 {0} 个会话...',
+                'status.batchExportFailed': '批量导出失败',
+                'status.exportFailed': '导出失败',
+                'status.checkingFile': '检查文件 {0} 出错',
+                'status.writingFile': '正在写入 {0}...',
+                'status.convertingData': '正在根据设置转换数据...',
+                
+                // Export related messages
+                'export.foundAttachments': '发现 {0} 个附件，开始下载...',
+                'export.cannotGetOrgInfo': '无法获取组织信息以下载附件。',
+                'export.skipExistingFile': '({0}/{1}) 跳过 (文件已存在): {2}',
+                'export.downloading': '({0}/{1}) 正在下载: {2}',
+                'export.noDownloadUrl': '找不到附件的下载链接。',
+                'export.processAttachmentFailed': '处理附件 {0} 失败',
+                'export.requestingFolder': '正在请求文件夹权限...',
+                'export.userCancelled': '用户取消了文件夹选择。',
+                'export.orgInfoRequired': '缺少导出所需组织信息。',
+                'export.creatingDirectory': '正在创建目录...',
+                'export.originalComplete': '原始导出完成！',
+                'export.originalFailed': '原始导出失败',
+                'export.customFailed': '自定义导出失败',
+                'export.batchComplete': '批量导出完成: {0}/{1} 个会话成功导出。',
+                'export.exportFailed': '导出失败 ({0}/{1}): {2}',
+                'export.exportingProgress': '({0}/{1}) 正在导出: {2}',
+                'export.sessionFailed': '导出会话 {0} 失败',
+                
+                // API error messages
+                'api.orgRequestFailed': '组织API请求失败: {0}',
+                'api.orgInfoNotFound': '在API响应中未找到组织信息。',
+                'api.getSessionsFailed': '获取会话列表失败: {0}',
+                'api.getHistoryFailed': '获取历史记录失败: {0}',
+                'api.deleteRequestFailed': '删除API请求失败: {0}',
+                'api.titleGenerationFailed': '标题生成API请求失败。',
+                'api.updateSessionFailed': '更新会话失败: {0}',
+                'api.fileDownloadFailed': '文件下载失败: {0} at {1}',
+                
+                // Tree view and content messages
+                'tree.attachmentOrToolOnly': '[仅包含附件或工具使用]',
+                'tree.attachments': '附件',
+                'tree.dirtyData': '脏数据',
+                'error.checkingFile': '检查文件 {0} 时发生意外错误',
+                'error.noValidTextContent': '在指定轮次内未找到有效文本内容。',
+                'error.insufficientRounds': '对话轮次不足(可能为空对话)，跳过重命名。',
+                'error.cannotGetConvoData': '无法获取对话数据',
+                
+                // Operation names
+                'operation.rename': '重命名',
+                'operation.delete': '删除',
+                'operation.star': '收藏',
+                'operation.unstar': '取消收藏'
+            },
+            
+            en: {
+                // Manager related
+                'manager.title': 'Manager',
+                'manager.refresh': 'Refresh List',
+                'manager.selectAll': 'Select All',
+                'manager.selectNone': 'Select None',
+                'manager.selectInvert': 'Invert Selection',
+                'manager.batchStar': 'Batch Star',
+                'manager.batchUnstar': 'Batch Unstar',
+                'manager.batchRename': 'Batch Auto Rename',
+                'manager.batchDelete': 'Batch Delete',
+                'manager.loading': 'Loading conversations...',
+                'manager.noResults': 'No conversations match the criteria.',
+                'manager.ready': 'Ready.',
+                'manager.refreshButtonTip': 'Click refresh button ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) to load conversation list.',
+                
+                // Settings related
+                'settings.title': 'Manager Settings',
+                'settings.theme': 'Appearance Settings',
+                'settings.themeMode': 'Script Theme:',
+                'settings.themeAuto': 'Follow Website',
+                'settings.themeLight': 'Lock Light',
+                'settings.themeDark': 'Lock Dark',
+                'settings.batchOps': 'Batch Operations Settings',
+                'settings.exportDefaults': 'Custom Export Default Settings',
+                'settings.save': 'Save Settings',
+                'settings.saved': 'Settings saved!',
+                'settings.backToMain': 'Back to Main Panel',
+                'settings.language': 'Language Settings',
+                'settings.interfaceLanguage': 'Interface Language:',
+                
+                // Navigator related
+                'navigator.title': 'Dialog Node Continuation & Navigator',
+                'navigator.branchMode': 'Branch Mode',
+                'navigator.navigateMode': 'Navigate Mode',
+                'navigator.branchSelected': 'Branch point selected',
+                'navigator.loading': 'Loading conversation history...',
+                'navigator.branchFromRoot': 'Start from root node (create a new main branch)',
+                
+                // Linear Navigator related
+                'linear.title': 'Linear Navigation',
+                'linear.refresh': 'Refresh Dialog List',
+                'linear.close': 'Close Linear Navigation',
+                'linear.top': 'Go to Top',
+                'linear.bottom': 'Go to Bottom',
+                'linear.prev': 'Previous',
+                'linear.next': 'Next',
+                'linear.empty': 'No linear dialogs',
+                
+                // Attachment related
+                'attachment.title': 'PDF Deep Analysis Staging Area',
+                'attachment.forceMode': 'Force PDF Deep Analysis',
+                'attachment.close': 'Close and clear all staged files',
+                
+                // Export related
+                'export.original': 'Original JSON Export',
+                'export.custom': 'Custom JSON Export',
+                'export.batchOriginal': 'Batch Original JSON Export',
+                'export.batchCustom': 'Batch Custom JSON Export',
+                'export.selectFolder': 'Requesting folder permission...',
+                'export.complete': 'Export completed!',
+                
+                // Tree view related
+                'tree.preview': 'Dialog Tree Preview',
+                'tree.loading': 'Loading dialog tree...',
+                'tree.empty': 'This is an empty conversation',
+                'tree.emptyForBranching': ', cannot select nodes',
+                
+                // Common related
+                'common.confirm': 'Confirm',
+                'common.cancel': 'Cancel',
+                'common.close': 'Close',
+                'common.save': 'Save',
+                'common.loading': 'Loading...',
+                'common.error': 'Error',
+                'common.success': 'Success',
+                'common.failed': 'Failed',
+                
+                // Sorting & Filtering
+                'sort.updatedDesc': 'Time Desc',
+                'sort.updatedAsc': 'Time Asc',
+                'sort.nameAsc': 'Name A-Z',
+                'sort.nameDesc': 'Name Z-A',
+                'filter.all': 'Show All',
+                'filter.starred': 'Show Starred Only',
+                'filter.unstarred': 'Hide Starred',
+                'filter.asciiOnly': 'ASCII Titles Only',
+                'filter.nonAscii': 'Non-ASCII Titles Only',
+                
+                // Button tooltips
+                'tooltip.managerButton': 'Tips: Ctrl + M to hide this button',
+                'tooltip.navigatorButton': 'Branch from any message node & navigate to any node',
+                'tooltip.linearNavButton': 'Linear Navigation',
+                'tooltip.pdfButton': 'Open PDF upload settings',
+                'tooltip.pdfHelp': 'This feature is designed for regular accounts to force advanced parsing. Pro/Team accounts natively support this, so this toggle has no effect.',
+                'tooltip.settingsButton': 'Settings',
+                'tooltip.githubLink': 'View GitHub Repository',
+                'tooltip.studioLink': 'Learn about next project: claude-dialog-tree-studio',
+                'pdf.forceModeText': 'Force PDF Deep Analysis',
+                
+                // Toolbar labels
+                'toolbar.sort': 'Sort:',
+                'toolbar.filter': 'Filter:',
+                'toolbar.searchPlaceholder': 'Search titles...',
+                
+                // Batch operations detailed settings
+                'batchOps.starUnstar': 'Batch Star/Unstar',
+                'batchOps.refreshAfterStar': 'Refresh list from server after operation (otherwise only update current view)',
+                'batchOps.batchDelete': 'Batch Delete',
+                'batchOps.refreshAfterDelete': 'Refresh list from server after operation (otherwise only update current view)',
+                'batchOps.autoRename': 'Batch Auto Rename',
+                'batchOps.titleLanguage': 'Title Language:',
+                'batchOps.titleLanguagePlaceholder': 'e.g.: 中文, English, 日本語',
+                'batchOps.maxRounds': 'Max Conversation Rounds:',
+                'batchOps.refreshAfterRename': 'Refresh list from server after operation (otherwise only update current view)',
+                
+                // Export settings
+                'exportSettings.customOptions': 'Custom Export Options',
+                'exportSettings.batchCustomOptions': 'Batch Custom Export Options',
+                'exportSettings.exportNow': 'Export Now',
+                'exportSettings.batchExportNow': 'Start Batch Export',
+                'exportSettings.basicInfo': 'Basic Information',
+                'exportSettings.messageStructure': 'Message Structure',
+                'exportSettings.timestampInfo': 'Timestamp Information',
+                'exportSettings.coreContent': 'Core Content',
+                'exportSettings.advancedContent': 'Advanced Content',
+                'exportSettings.keepMetadata': 'Keep conversation metadata',
+                'exportSettings.title': 'Title (name)',
+                'exportSettings.summary': 'Summary (summary)',
+                'exportSettings.sessionTimestamp': 'Session creation/update time',
+                'exportSettings.sessionSettings': 'Session settings (settings)',
+                'exportSettings.sender': 'Sender (sender)',
+                'exportSettings.messageUuids': 'Message/Parent UUIDs (recommended to keep)',
+                'exportSettings.otherMeta': 'Other metadata (index, stop_reason, etc.)',
+                'exportSettings.messageTimestamp': 'Message node timestamps (created_at/updated_at)',
+                'exportSettings.contentTimestamp': 'Content block streaming timestamps (start/stop)',
+                'exportSettings.attachmentTimestamp': 'Attachment creation timestamps',
+                'exportSettings.textContent': 'Text content (text blocks)',
+                'exportSettings.attachmentInfo': 'Attachment Information:',
+                'exportSettings.attachmentFull': 'Full information (including extracted text)',
+                'exportSettings.attachmentMetaOnly': 'Metadata only (filename, size, etc.)',
+                'exportSettings.attachmentNone': 'No attachments',
+                'exportSettings.thinkingProcess': "'Thinking' process (thinking blocks)",
+                'exportSettings.toolRecords': 'Keep tool usage records',
+                'exportSettings.webSearch': 'Web search (web_search)',
+                'exportSettings.codeAnalysis': 'Code analysis (repl)',
+                'exportSettings.artifactCreation': 'Artifact creation (artifacts)',
+                'exportSettings.otherTools': 'Other unknown tools',
+                'exportSettings.successfulOnly': 'Keep only successful tool calls',
+                
+                // Export status messages
+                'exportStatus.customComplete': 'Custom export completed!',
+                'exportStatus.customFailed': 'Custom export failed',
+                'exportStatus.batchPreparing': 'Preparing batch custom export',
+                'exportStatus.batchComplete': 'Batch custom export completed',
+                'exportStatus.sessions': 'sessions',
+                
+                // Action button tooltips
+                'action.manualRename': 'Manual Rename',
+                'action.previewTree': 'Preview Dialog Tree',
+                'action.originalExport': 'Original JSON Export',
+                'action.customExport': 'Custom JSON Export',
+                
+                // Status messages
+                'status.savingTitle': 'Saving new title...',
+                'status.saveSuccess': 'Saved successfully!',
+                'status.saveFailed': 'Save failed',
+                'status.loadedSessions': 'Loaded',
+                'status.loadSessionsFailed': 'Failed to load conversations',
+                'status.loadFailed': 'Load failed',
+                
+                // Error messages
+                'error.cannotLoadTree': 'Cannot load conversation tree',
+                
+                // Tree view related
+                'treeView.prefix': 'Dialog Tree: ',
+                'treeView.untitled': 'Untitled',
+                'treeView.loading': 'Loading...',
+                'treeView.loadFailed': 'Failed to load dialog tree',
+                
+                // Additional status and error messages
+                'error.invalidTitle': 'Generated invalid title.',
+                'error.loadSessionsFailed': 'Failed to load sessions',
+                'error.selectSessions': 'Please select sessions to execute "{0}".',
+                'error.selectExportSessions': 'Please select sessions to export.',
+                'error.browserNotSupported': 'Your browser does not support File System Access API.',
+                'status.refreshingFromServer': ' Refreshing from server...',
+                'status.preparingExport': 'Preparing export...',
+                'status.exporting': 'Exporting...',
+                'status.ready': 'Ready.',
+                'navigator.loadingHistory': 'Loading conversation history...',
+                'navigator.notInChat': 'Not in a specific chat, cannot operate on nodes.',
+                'attachment.title': 'PDF Deep Analysis Staging Area',
+                'attachment.removeFile': 'Remove file',
+                'attachment.clickPreview': 'Click to preview',
+                'attachment.openInNewTab': 'Click to open in new tab',
+                'navigator.clickToNavigate': 'Click to navigate to this node',
+                'navigator.clickToContinue': 'Click to continue from this node',
+                'navigator.nextMessageFrom': 'Next message will start from the specified node.',
+                'batchOps.confirmDelete': 'Are you sure to permanently delete {0} conversations?',
+                'status.batchProcessing': 'Batch {0} {1} conversations...',
+                'status.batchItemProcessing': '{0} {1}/{2}...',
+                'status.batchItemFailed': 'Item {0} failed',
+                'status.batchOperationComplete': 'Operation completed. Successfully {0} {1}/{2} conversations.',
+                'status.batchOperationFailed': 'Batch {0} failed',
+                'status.batchExportPreparing': 'Preparing batch export for {0} conversations...',
+                'status.batchExportFailed': 'Batch export failed',
+                'status.exportFailed': 'Export failed',
+                'status.checkingFile': 'Error checking file {0}',
+                'status.writingFile': 'Writing {0}...',
+                'status.convertingData': 'Converting data according to settings...',
+                
+                // Export related messages
+                'export.foundAttachments': 'Found {0} attachments, starting download...',
+                'export.cannotGetOrgInfo': 'Cannot get organization info for downloading attachments.',
+                'export.skipExistingFile': '({0}/{1}) Skip (file exists): {2}',
+                'export.downloading': '({0}/{1}) Downloading: {2}',
+                'export.noDownloadUrl': 'Cannot find download link for attachment.',
+                'export.processAttachmentFailed': 'Failed to process attachment {0}',
+                'export.requestingFolder': 'Requesting folder permissions...',
+                'export.userCancelled': 'User cancelled folder selection.',
+                'export.orgInfoRequired': 'Organization info required for export.',
+                'export.creatingDirectory': 'Creating directory...',
+                'export.originalComplete': 'Original export completed!',
+                'export.originalFailed': 'Original export failed',
+                'export.customFailed': 'Custom export failed',
+                'export.batchComplete': 'Batch export completed: {0}/{1} conversations exported successfully.',
+                'export.exportFailed': 'Export failed ({0}/{1}): {2}',
+                'export.exportingProgress': '({0}/{1}) Exporting: {2}',
+                'export.sessionFailed': 'Failed to export session {0}',
+                
+                // API error messages
+                'api.orgRequestFailed': 'Organization API request failed: {0}',
+                'api.orgInfoNotFound': 'Organization info not found in API response.',
+                'api.getSessionsFailed': 'Failed to get sessions: {0}',
+                'api.getHistoryFailed': 'Failed to get history: {0}',
+                'api.deleteRequestFailed': 'Delete API request failed: {0}',
+                'api.titleGenerationFailed': 'Title generation API request failed.',
+                'api.updateSessionFailed': 'Failed to update session: {0}',
+                'api.fileDownloadFailed': 'File download failed: {0} at {1}',
+                
+                // Tree view and content messages
+                'tree.attachmentOrToolOnly': '[Contains only attachments or tool usage]',
+                'tree.attachments': 'Attachments',
+                'tree.dirtyData': 'Dirty Data',
+                'error.checkingFile': 'Unexpected error checking file {0}',
+                'error.noValidTextContent': 'No valid text content found within specified rounds.',
+                'error.insufficientRounds': 'Insufficient conversation rounds (possibly empty conversation), skipping rename.',
+                'error.cannotGetConvoData': 'Cannot get conversation data',
+                
+                // Operation names
+                'operation.rename': 'rename',
+                'operation.delete': 'delete', 
+                'operation.star': 'star',
+                'operation.unstar': 'unstar'
+            }
+        }
+    };
+
+    // 翻译函数
+    function t(key, fallback = key, ...params) {
+        const lang = I18N_CONFIG.currentLang;
+        const translations = I18N_CONFIG.translations[lang];
+        let text = translations && translations[key] ? translations[key] : (fallback || key);
+        
+        // 支持参数替换 {0}, {1}, {2}...
+        if (params.length > 0) {
+            for (let i = 0; i < params.length; i++) {
+                text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), params[i]);
+            }
+        }
+        
+        return text;
+    }
+
+
+
+    // =========================================================================
+    // 1. 全局配置
     // =========================================================================
     const Config = {
         INITIAL_PARENT_UUID: "00000000-0000-4000-8000-000000000000",
@@ -98,16 +638,16 @@
     // --- 2.1 主题设置模块 ---
     const ThemeSettingsModule = {
         id: 'theme',
-        title: '外观设置',
+        title: t('settings.theme'),
         render() {
             return `
                 <div class="cpm-setting-group">
                     <div class="cpm-setting-item">
-                        <label for="cpm-theme-mode" class="cpm-settings-label">脚本主题:</label>
+                        <label for="cpm-theme-mode" class="cpm-settings-label">${t('settings.themeMode')}</label>
                         <select id="cpm-theme-mode">
-                            <option value="auto">跟随网站</option>
-                            <option value="light">锁定白天</option>
-                            <option value="dark">锁定黑夜</option>
+                            <option value="auto">${t('settings.themeAuto')}</option>
+                            <option value="light">${t('settings.themeLight')}</option>
+                            <option value="dark">${t('settings.themeDark')}</option>
                         </select>
                     </div>
                 </div>
@@ -129,22 +669,22 @@
     // --- 2.2 批量操作设置模块 ---
     const BatchOpsSettingsModule = {
         id: 'batchOps',
-        title: '批量操作设置',
+        title: t('settings.batchOps'),
         render() {
             return `
                 <div class="cpm-setting-group">
-                    <h4>批量收藏/取消收藏</h4>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-star"><label for="cpm-refresh-after-star">操作后从服务器刷新列表 (否则仅更新当前视图)</label></div>
+                    <h4>${t('batchOps.starUnstar')}</h4>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-star"><label for="cpm-refresh-after-star">${t('batchOps.refreshAfterStar')}</label></div>
                 </div>
                 <div class="cpm-setting-group">
-                    <h4>批量删除</h4>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-delete"><label for="cpm-refresh-after-delete">操作后从服务器刷新列表 (否则仅更新当前视图)</label></div>
+                    <h4>${t('batchOps.batchDelete')}</h4>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-delete"><label for="cpm-refresh-after-delete">${t('batchOps.refreshAfterDelete')}</label></div>
                 </div>
                 <div class="cpm-setting-group">
-                    <h4>批量自动重命名</h4>
-                    <div class="cpm-setting-item"><label for="cpm-rename-lang" class="cpm-settings-label">标题语言:</label><input type="text" id="cpm-rename-lang" placeholder="例如：中文, English, 日本語"></div>
-                    <div class="cpm-setting-item"><label for="cpm-rename-rounds" class="cpm-settings-label">使用对话轮数 (最多):</label><input type="number" id="cpm-rename-rounds" min="1" max="10" step="1"></div>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-rename"><label for="cpm-refresh-after-rename">操作后从服务器刷新列表 (否则仅更新当前视图)</label></div>
+                    <h4>${t('batchOps.autoRename')}</h4>
+                    <div class="cpm-setting-item"><label for="cpm-rename-lang" class="cpm-settings-label">${t('batchOps.titleLanguage')}</label><input type="text" id="cpm-rename-lang" placeholder="${t('batchOps.titleLanguagePlaceholder')}"></div>
+                    <div class="cpm-setting-item"><label for="cpm-rename-rounds" class="cpm-settings-label">${t('batchOps.maxRounds')}</label><input type="number" id="cpm-rename-rounds" min="1" max="10" step="1"></div>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-refresh-after-rename"><label for="cpm-refresh-after-rename">${t('batchOps.refreshAfterRename')}</label></div>
                 </div>
             `;
         },
@@ -167,7 +707,7 @@
     // --- 2.3 导出设置模块 ---
     const ExportSettingsModule = {
         id: 'export',
-        title: '自定义导出默认设置',
+        title: t('settings.exportDefaults'),
         render() {
             return ManagerUI.createExportSettingsHTML(true);
         },
@@ -182,7 +722,47 @@
         }
     };
 
-    // --- 2.4 注册所有设置模块 ---
+    // --- 2.4 语言设置模块 ---
+    const LanguageSettingsModule = {
+        id: 'language',
+        title: t('settings.language'),
+        render() {
+            return `
+                <div class="cpm-setting-group">
+                    <div class="cpm-setting-item">
+                        <label for="cpm-language-select" class="cpm-settings-label">${t('settings.interfaceLanguage')}</label>
+                        <select id="cpm-language-select">
+                            <option value="zh">简体中文</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        },
+        load(container) {
+            const langSelect = container.querySelector('#cpm-language-select');
+            if (langSelect) {
+                langSelect.value = I18N_CONFIG.currentLang;
+            }
+        },
+        save(container) {
+            const langSelect = container.querySelector('#cpm-language-select');
+            if (langSelect) {
+                const newLang = langSelect.value;
+                if (newLang !== I18N_CONFIG.currentLang) {
+                    I18N_CONFIG.currentLang = newLang;
+                    GM_setValue('language', newLang);
+                    // 重新加载界面
+                    setTimeout(() => {
+                        location.reload();
+                    }, 500);
+                }
+            }
+        }
+    };
+
+    // --- 2.5 注册所有设置模块 ---
+    SettingsRegistry.register(LanguageSettingsModule);
     SettingsRegistry.register(ThemeSettingsModule);
     SettingsRegistry.register(BatchOpsSettingsModule);
     SettingsRegistry.register(ExportSettingsModule);
@@ -274,14 +854,14 @@
             if (this.orgInfo) return this.orgInfo;
             try {
                 const response = await fetch('/api/organizations');
-                if (!response.ok) throw new Error(`组织API请求失败: ${response.status}`);
+                if (!response.ok) throw new Error(t('api.orgRequestFailed', 'api.orgRequestFailed', response.status));
                 const orgs = await response.json();
                 if (orgs && orgs.length > 0) {
                     this.orgInfo = orgs[0];
                     this.orgUuid = this.orgInfo.uuid;
                     return this.orgInfo;
                 }
-                throw new Error("在API响应中未找到组织信息。");
+                throw new Error(t('api.orgInfoNotFound'));
             } catch (error) {
                 console.error(LOG_PREFIX, "获取组织信息失败:", error);
                 throw error;
@@ -295,14 +875,14 @@
         async getConversations() {
             const orgId = await this.getOrgUuid();
             const response = await fetch(`/api/organizations/${orgId}/chat_conversations`);
-            if (!response.ok) throw new Error(`获取会话列表失败: ${response.status}`);
+            if (!response.ok) throw new Error(t('api.getSessionsFailed', 'api.getSessionsFailed', response.status));
             return response.json();
         },
         async getConversationHistory(convUuid) {
             const orgId = await this.getOrgUuid();
             const url = `/api/organizations/${orgId}/chat_conversations/${convUuid}?tree=True&rendering_mode=messages&render_all_tools=true`;
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`获取历史记录失败: ${response.status}`);
+            if (!response.ok) throw new Error(t('api.getHistoryFailed', 'api.getHistoryFailed', response.status));
             const data = await response.json();
 
             // 标记脏数据：标记没有 Claude 回复的孤儿用户节点
@@ -410,7 +990,7 @@
             const options = { method: isSingle ? 'DELETE' : 'POST', headers: { 'Content-Type': 'application/json' } };
             if (!isSingle) options.body = JSON.stringify({ conversation_uuids: convUuids });
             const response = await fetch(url, options);
-            if (!response.ok) throw new Error(`删除API请求失败: ${response.statusText}`);
+            if (!response.ok) throw new Error(t('api.deleteRequestFailed', 'api.deleteRequestFailed', response.statusText));
         },
         async generateTitle(tempConvUuid, messageContent) {
             const orgId = await this.getOrgUuid();
@@ -420,9 +1000,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message_content: messageContent, recent_titles: [] })
             });
-            if (!response.ok) throw new Error("标题生成API请求失败。");
+            if (!response.ok) throw new Error(t('api.titleGenerationFailed'));
             const { title } = await response.json();
-            if (!title || title.toLowerCase().includes('untitled')) throw new Error('生成了无效标题。');
+            if (!title || title.toLowerCase().includes('untitled')) throw new Error(t('error.invalidTitle'));
             return title;
         },
         async updateConversation(convUuid, payload) {
@@ -433,11 +1013,11 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (!response.ok) throw new Error(`更新会话失败: ${response.statusText}`);
+            if (!response.ok) throw new Error(t('api.updateSessionFailed', 'api.updateSessionFailed', response.statusText));
         },
         async downloadFile(url) {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`文件下载失败: ${response.status} at ${url}`);
+            if (!response.ok) throw new Error(t('api.fileDownloadFailed', 'api.fileDownloadFailed', response.status, url));
             return response.blob();
         },
 
@@ -1124,7 +1704,7 @@
             nav.innerHTML = `
                 <div class="cpm-ln-header">
                     <div style="display: flex; align-items: center; margin-left: -4px;">
-                        <button class="cpm-ln-refresh" type="button" title="刷新对话列表">
+                        <button class="cpm-ln-refresh" type="button" title="${t('linear.refresh')}">
                             <svg class="cpm-svg-icon" style="width:14px; height:14px;"><use href="#cpm-ln-icon-refresh"></use></svg>
                         </button>
                     </div>
@@ -1132,26 +1712,26 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px; height:16px;">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
                         </svg>
-                        <span>线性导航</span>
+                        <span>${t('linear.title')}</span>
                     </div>
                     <div style="display: flex; align-items: center; margin-right: -4px;">
-                        <button class="cpm-ln-close" type="button" title="关闭线性导航">
+                        <button class="cpm-ln-close" type="button" title="${t('linear.close')}">
                             <svg class="cpm-svg-icon" style="width:14px; height:14px;"><use href="#cpm-ln-icon-close"></use></svg>
                         </button>
                     </div>
                 </div>
                 <div class="cpm-ln-list"></div>
                 <div class="cpm-ln-footer">
-                    <button class="cpm-ln-nav-btn" type="button" data-action="top" title="回到顶部">
+                    <button class="cpm-ln-nav-btn" type="button" data-action="top" title="${t('linear.top')}">
                         <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-line-up"></use></svg>
                     </button>
-                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="prev" title="上一条">
+                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="prev" title="${t('linear.prev')}">
                         <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-up"></use></svg>
                     </button>
-                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="next" title="下一条">
+                    <button class="cpm-ln-nav-btn arrow" type="button" data-action="next" title="${t('linear.next')}">
                         <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-down"></use></svg>
                     </button>
-                    <button class="cpm-ln-nav-btn" type="button" data-action="bottom" title="回到底部">
+                    <button class="cpm-ln-nav-btn" type="button" data-action="bottom" title="${t('linear.bottom')}">
                         <svg class="cpm-svg-icon"><use href="#cpm-ln-icon-arrow-line-down"></use></svg>
                     </button>
                 </div>
@@ -1251,7 +1831,7 @@
         render(indexData) {
             const list = this.element.querySelector('.cpm-ln-list');
             if (!indexData.length) {
-                list.innerHTML = `<div class="cpm-ln-empty">暂无线性对话</div>`;
+                list.innerHTML = `<div class="cpm-ln-empty">${t('linear.empty')}</div>`;
                 return;
             }
 
@@ -1329,14 +1909,14 @@
             container.innerHTML = '';
 
             if (!messages || messages.length === 0) {
-                 container.innerHTML = `<p class="cpm-loading">这是一个空对话${isForBranching ? '，无法选择节点' : ''}。</p>`;
+                 container.innerHTML = `<p class="cpm-loading">${t('tree.empty')}${isForBranching ? t('tree.emptyForBranching') : ''}。</p>`;
                  return;
             }
 
             if (isForBranching && !isNavigationMode) {
                 const rootBtn = document.createElement('div');
                 rootBtn.id = 'cpm-branch-from-root-btn';
-                rootBtn.textContent = '从根节点开始 (创建一个新的主分支)';
+                rootBtn.textContent = t('navigator.branchFromRoot');
                 rootBtn.onclick = () => onNodeClick(Config.INITIAL_PARENT_UUID, rootBtn);
                 container.appendChild(rootBtn);
             }
@@ -1382,7 +1962,7 @@
                 }
 
                 if (allAttachments.length > 0) {
-                    attachmentsHTML += '<div class="cpm-tree-attachments">└─ [附件]:<ul>';
+                    attachmentsHTML += `<div class="cpm-tree-attachments">└─ [${t('tree.attachments')}]:<ul>`;
                     allAttachments.forEach(file => {
                         if (file.type === 'text') {
                             const contentPreview = (file.extracted_content || '').substring(0, 25);
@@ -1403,7 +1983,7 @@
                                 if (ext) fullUrl = `${baseUrl}/api/${orgUuid}/files/${file.file_uuid}/document_${ext.replace('.','')}/${file.file_name}`;
                             }
 
-                            const urlLink = fullUrl ? `<a href="${fullUrl}" target="_blank" class="cpm-attachment-url" title="点击在新标签页打开: ${fullUrl}">[View/Download URL]</a>` : '[URL Not Available]';
+                            const urlLink = fullUrl ? `<a href="${fullUrl}" target="_blank" class="cpm-attachment-url" title="${t('attachment.openInNewTab')}: ${fullUrl}">[View/Download URL]</a>` : '[URL Not Available]';
                             attachmentsHTML += `<li>- ${file.file_name} <span class="cpm-attachment-source">[Source: /upload | Type: ${file.file_kind || 'unknown'}]</span> ${urlLink}</li>`;
                         }
                     });
@@ -1413,7 +1993,7 @@
                 // 检测是否为脏数据节点
                 const isDirtyNode = node._isDirtyData || (node.tree_id && node.tree_id.includes('-F'));
                 const dirtyClass = isDirtyNode ? ' cpm-dirty-node' : '';
-                const dirtyLabel = isDirtyNode ? ' [脏数据]' : '';
+                const dirtyLabel = isDirtyNode ? ` [${t('tree.dirtyData')}]` : '';
 
                 // 使用现代化DOM操作，避免HTML注入
                 const header = document.createElement('div');
@@ -1429,7 +2009,7 @@
 
                 const previewSpan = document.createElement('span');
                 previewSpan.className = 'cpm-tree-node-preview';
-                previewSpan.textContent = preview || '[仅包含附件或工具使用]';
+                previewSpan.textContent = preview || t('tree.attachmentOrToolOnly');
 
                 header.append(idSpan, senderSpan, previewSpan);
                 nodeElement.appendChild(header);
@@ -1446,7 +2026,7 @@
 
                 if (isClickable) {
                     nodeElement.classList.add('cpm-node-clickable');
-                    nodeElement.title = isNavigationMode ? '点击导航到此节点' : '点击从此节点继续对话';
+                    nodeElement.title = isNavigationMode ? t('navigator.clickToNavigate') : t('navigator.clickToContinue');
                     nodeElement.onclick = () => onNodeClick(node.uuid, nodeElement);
                 }
 
@@ -1482,9 +2062,9 @@
             }
 
             if (allAttachments.length > 0) {
-                statusCallback(`发现 ${allAttachments.length} 个附件，开始下载...`, 'info');
+                statusCallback(t('export.foundAttachments', 'export.foundAttachments', allAttachments.length), 'info');
                 const orgInfo = await ClaudeAPI.getOrganizationInfo();
-                if (!orgInfo) throw new Error("无法获取组织信息以下载附件。");
+                if (!orgInfo) throw new Error(t('export.cannotGetOrgInfo'));
 
                 for (let i = 0; i < allAttachments.length; i++) {
                     const file = allAttachments[i];
@@ -1502,17 +2082,17 @@
 
                     try {
                         await exportDirHandle.getFileHandle(fileName, { create: false });
-                        statusCallback(`(${i + 1}/${allAttachments.length}) 跳过 (文件已存在): ${fileName}`, 'info');
+                        statusCallback(t('export.skipExistingFile', 'export.skipExistingFile', i + 1, allAttachments.length, fileName), 'info');
                         continue;
                     } catch (error) {
                         if (error.name !== 'NotFoundError') {
-                            console.error(`检查文件 ${fileName} 时发生意外错误:`, error);
-                            statusCallback(`检查文件 ${fileName} 出错`, 'error');
+                            console.error(t('error.checkingFile', 'error.checkingFile', fileName) + ':', error);
+                            statusCallback(t('status.checkingFile').replace('{0}', fileName), 'error');
                             continue;
                         }
                     }
 
-                    statusCallback(`(${i + 1}/${allAttachments.length}) 正在下载: ${fileName}`, 'info');
+                    statusCallback(t('export.downloading', 'export.downloading', i + 1, allAttachments.length, fileName), 'info');
                     try {
                         let fileContent;
                         if (file.type === 'text') {
@@ -1531,7 +2111,7 @@
                                downloadUrl = `/api/${orgInfo.uuid}/files/${file.file_uuid}/document_${ext.replace('.','')}/${file.file_name}`;
                             }
 
-                            if(!downloadUrl) throw new Error("找不到附件的下载链接。");
+                            if(!downloadUrl) throw new Error(t('export.noDownloadUrl'));
                             fileContent = await ClaudeAPI.downloadFile(downloadUrl);
                         }
                         const fileHandle = await exportDirHandle.getFileHandle(fileName, { create: true });
@@ -1540,28 +2120,28 @@
                         await writable.close();
                     } catch (err) {
                         console.error(`处理附件 ${fileName} 失败:`, err);
-                        statusCallback(`处理附件 ${fileName} 失败`, 'error');
+                        statusCallback(t('export.processAttachmentFailed', 'export.processAttachmentFailed', fileName), 'error');
                     }
                 }
             }
         },
         async performExportOriginal(convUuid, statusCallback) {
-            if (typeof window.showDirectoryPicker !== 'function') throw new Error("您的浏览器不支持 File System Access API。");
-            statusCallback("正在请求文件夹权限...", 'info');
+            if (typeof window.showDirectoryPicker !== 'function') throw new Error(t('error.browserNotSupported'));
+            statusCallback(t('export.requestingFolder'), 'info');
             let rootDirHandle;
             try {
                 rootDirHandle = await window.showDirectoryPicker();
             } catch (err) {
-                if (err.name === 'AbortError') { statusCallback("用户取消了文件夹选择。", 'info', 3000); return; }
+                if (err.name === 'AbortError') { statusCallback(t('export.userCancelled'), 'info', 3000); return; }
                 throw err;
             }
 
             try {
                 const historyData = await ClaudeAPI.getConversationHistory(convUuid);
                 const orgInfo = await ClaudeAPI.getOrganizationInfo();
-                if (!orgInfo) throw new Error("缺少导出所需组织信息。");
+                if (!orgInfo) throw new Error(t('export.orgInfoRequired'));
 
-                statusCallback("正在创建目录...", 'info');
+                statusCallback(t('export.creatingDirectory'), 'info');
                 const orgName = (orgInfo.name || "unknown_org").replace(/'s Organization$/, "");
                 const safeTitle = (historyData.name || "Untitled").replace(/[<>:"/\\|?*]/g, '_');
                 const pathParts = [`Claude_Exports`, `[${orgName}]`, `[Original]_[${safeTitle}]_[${convUuid}]`];
@@ -1574,7 +2154,7 @@
 
                 const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
                 const historyFileName = `history-${timestamp}.json`;
-                statusCallback(`正在写入 ${historyFileName}...`, 'info');
+                statusCallback(t('status.writingFile').replace('{0}', historyFileName), 'info');
                 const historyFileHandle = await exportDirHandle.getFileHandle(historyFileName, { create: true });
                 const writableHistory = await historyFileHandle.createWritable();
                 await writableHistory.write(JSON.stringify(historyData, null, 2));
@@ -1582,10 +2162,10 @@
 
                 await this.exportAttachmentsForConversation(historyData, exportDirHandle, statusCallback);
 
-                statusCallback("原始导出完成！", 'success', 5000);
+                statusCallback(t('export.originalComplete'), 'success', 5000);
             } catch (error) {
                 console.error("原始导出失败:", error);
-                statusCallback(`原始导出失败: ${error.message}`, 'error', 5000);
+                statusCallback(`${t('export.originalFailed')}: ${error.message}`, 'error', 5000);
             }
         },
         transformConversation(originalData, settings) {
@@ -1676,22 +2256,22 @@
             return newData;
         },
         async performExportCustom(convUuid, settings, statusCallback) {
-            if (typeof window.showDirectoryPicker !== 'function') throw new Error("您的浏览器不支持 File System Access API。");
-            statusCallback("正在请求文件夹权限...", 'info');
+            if (typeof window.showDirectoryPicker !== 'function') throw new Error(t('error.browserNotSupported'));
+            statusCallback(t('export.requestingFolder'), 'info');
              let rootDirHandle;
             try {
                 rootDirHandle = await window.showDirectoryPicker();
             } catch (err) {
-                if (err.name === 'AbortError') { statusCallback("用户取消了文件夹选择。", 'info', 3000); return; }
+                if (err.name === 'AbortError') { statusCallback(t('export.userCancelled'), 'info', 3000); return; }
                 throw err;
             }
 
             try {
                 const historyData = await ClaudeAPI.getConversationHistory(convUuid);
                 const orgInfo = await ClaudeAPI.getOrganizationInfo();
-                 if (!orgInfo) throw new Error("缺少导出所需组织信息。");
+                 if (!orgInfo) throw new Error(t('export.orgInfoRequired'));
 
-                statusCallback("正在创建目录...", 'info');
+                statusCallback(t('export.creatingDirectory'), 'info');
                 const orgName = (orgInfo.name || "unknown_org").replace(/'s Organization$/, "");
                 const safeTitle = (historyData.name || "Untitled").replace(/[<>:"/\\|?*]/g, '_');
                 const pathParts = [`Claude_Exports`, `[${orgName}]`, `[Custom]_[${safeTitle}]_[${convUuid}]`];
@@ -1702,13 +2282,13 @@
                 }
                 const exportDirHandle = currentDirHandle;
 
-                statusCallback("正在根据设置转换数据...", 'info');
+                statusCallback(t('status.convertingData'), 'info');
                 const transformedData = this.transformConversation(historyData, settings);
                 const jsonString = JSON.stringify(transformedData, null, 2);
 
                 const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
                 const historyFileName = `history-${timestamp}.json`;
-                statusCallback(`正在写入 ${historyFileName}...`, 'info');
+                statusCallback(t('status.writingFile').replace('{0}', historyFileName), 'info');
                 const historyFileHandle = await exportDirHandle.getFileHandle(historyFileName, { create: true });
                 const writableHistory = await historyFileHandle.createWritable();
                 await writableHistory.write(jsonString);
@@ -1718,10 +2298,10 @@
                     await this.exportAttachmentsForConversation(historyData, exportDirHandle, statusCallback);
                 }
 
-                statusCallback("自定义导出完成！", 'success', 5000);
+                statusCallback(t('exportStatus.customComplete'), 'success', 5000);
             } catch (error) {
-                console.error("自定义导出失败:", error);
-                statusCallback(`自定义导出失败: ${error.message}`, 'error', 5000);
+                console.error(t('export.customFailed') + ':', error);
+                statusCallback(`${t('exportStatus.customFailed')}: ${error.message}`, 'error', 5000);
             }
         },
         async performAutoRename(convUuid) {
@@ -1729,7 +2309,7 @@
             const maxRounds = parseInt(GM_getValue('renameRounds', 2), 10);
             const historyData = await ClaudeAPI.getConversationHistory(convUuid);
             const roundsToUse = Math.min(Math.floor(historyData.chat_messages.length / 2), maxRounds);
-            if (roundsToUse < 1) throw new Error("对话轮次不足(可能为空对话)，跳过重命名。");
+            if (roundsToUse < 1) throw new Error(t('error.insufficientRounds'));
             const messagesToProcess = historyData.chat_messages.slice(0, roundsToUse * 2);
             let messageParts = [];
             messagesToProcess.forEach((msg, index) => {
@@ -1738,7 +2318,7 @@
                 if (!textContent && msg.text) textContent = msg.text;
                 if (textContent.trim()) messageParts.push(`${senderLabel}:\n\n${textContent.trim()}`);
             });
-            if (messageParts.length === 0) throw new Error("在指定轮次内未找到有效文本内容。");
+            if (messageParts.length === 0) throw new Error(t('error.noValidTextContent'));
             let finalMessageContent = messageParts.join('\n\n');
             if (langPrompt && langPrompt.trim() !== "") {
                 const startInstruction = `TASK: Generate a title for the following conversation.\nRULE: The title language must be strictly ${langPrompt}.\n\n--- Conversation Start ---`;
@@ -1854,8 +2434,8 @@
 
             const managerButton = document.createElement('button');
             managerButton.id = 'cpm-manager-button';
-            managerButton.innerHTML = 'Manager';
-            managerButton.title = 'Tips: Ctrl + M 可以隐藏此按钮';
+            managerButton.innerHTML = t('manager.title');
+            managerButton.title = t('tooltip.managerButton');
             document.body.appendChild(managerButton);
 
             const mainPanel = document.createElement('div');
@@ -1863,31 +2443,31 @@
             mainPanel.className = 'cpm-panel';
             mainPanel.innerHTML = `
                 <div class="cpm-header">
-                    <h2>Manager</h2>
+                    <h2>${t('manager.title')}</h2>
                     <div class="cpm-header-actions">
-                        <a href="${Config.URL_GITHUB_REPO}" target="_blank" class="cpm-icon-btn" title="查看 GitHub 仓库"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-github"></use></svg></a>
-                        <a href="${Config.URL_STUDIO_REPO}" target="_blank" class="cpm-icon-btn" title="了解下一个项目: claude-dialog-tree-studio"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-tree-studio"></use></svg></a>
-                        <button id="cpm-open-settings-button" title="设置" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-settings"></use></svg></button>
+                        <a href="${Config.URL_GITHUB_REPO}" target="_blank" class="cpm-icon-btn" title="${t('tooltip.githubLink')}"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-github"></use></svg></a>
+                        <a href="${Config.URL_STUDIO_REPO}" target="_blank" class="cpm-icon-btn" title="${t('tooltip.studioLink')}"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-tree-studio"></use></svg></a>
+                        <button id="cpm-open-settings-button" title="${t('tooltip.settingsButton')}" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-settings"></use></svg></button>
                         <button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
                     </div>
                 </div>
                 <div class="cpm-toolbar">
-                    <div class="cpm-toolbar-group"><button class="cpm-btn" id="cpm-select-all">全选</button><button class="cpm-btn" id="cpm-select-none">全不选</button><button class="cpm-btn" id="cpm-select-invert">反选</button></div>
-                    <div class="cpm-toolbar-group"><input type="search" id="cpm-search-box" placeholder="搜索标题..."/></div>
-                    <div class="cpm-toolbar-group"><label>排序:</label><select id="cpm-sort-select"><option value="updated_at_desc">时间降序</option><option value="updated_at_asc">时间升序</option><option value="name_asc">名称 A-Z</option><option value="name_desc">名称 Z-A</option></select></div>
-                    <div class="cpm-toolbar-group"><label>筛选:</label><select id="cpm-filter-select"><option value="all">显示全部</option><option value="starred">仅显示收藏</option><option value="unstarred">隐藏收藏</option><option value="ascii_only">仅显示纯ASCII标题</option><option value="non_ascii">不显示纯ASCII标题</option></select></div>
-                    <button class="cpm-icon-btn" id="cpm-refresh" title="刷新列表"><svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg></button>
+                    <div class="cpm-toolbar-group"><button class="cpm-btn" id="cpm-select-all">${t('manager.selectAll')}</button><button class="cpm-btn" id="cpm-select-none">${t('manager.selectNone')}</button><button class="cpm-btn" id="cpm-select-invert">${t('manager.selectInvert')}</button></div>
+                    <div class="cpm-toolbar-group"><input type="search" id="cpm-search-box" placeholder="${t('toolbar.searchPlaceholder')}"/></div>
+                    <div class="cpm-toolbar-group"><label>${t('toolbar.sort')}</label><select id="cpm-sort-select"><option value="updated_at_desc">${t('sort.updatedDesc')}</option><option value="updated_at_asc">${t('sort.updatedAsc')}</option><option value="name_asc">${t('sort.nameAsc')}</option><option value="name_desc">${t('sort.nameDesc')}</option></select></div>
+                    <div class="cpm-toolbar-group"><label>${t('toolbar.filter')}</label><select id="cpm-filter-select"><option value="all">${t('filter.all')}</option><option value="starred">${t('filter.starred')}</option><option value="unstarred">${t('filter.unstarred')}</option><option value="ascii_only">${t('filter.asciiOnly')}</option><option value="non_ascii">${t('filter.nonAscii')}</option></select></div>
+                    <button class="cpm-icon-btn" id="cpm-refresh" title="${t('manager.refresh')}"><svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg></button>
                 </div>
-                <div class="cpm-actions"><button class="cpm-action-btn" id="cpm-batch-star">批量收藏</button><button class="cpm-action-btn" id="cpm-batch-unstar">批量取消收藏</button><button class="cpm-action-btn" id="cpm-batch-rename">批量自动重命名</button><button class="cpm-action-btn cpm-danger-btn" id="cpm-batch-delete">批量删除</button><span style="flex-grow: 1;"></span><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-original" title="批量原始JSON导出"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-original"></use></svg></button><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-custom" title="批量自定义JSON导出"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-custom"></use></svg></button></div>
-                <div class="cpm-list-container"><p class="cpm-loading">点击刷新按钮 ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) 加载会话列表。</p></div>
-                <div class="cpm-status-bar">准备就绪。</div>`;
+                <div class="cpm-actions"><button class="cpm-action-btn" id="cpm-batch-star">${t('manager.batchStar')}</button><button class="cpm-action-btn" id="cpm-batch-unstar">${t('manager.batchUnstar')}</button><button class="cpm-action-btn" id="cpm-batch-rename">${t('manager.batchRename')}</button><button class="cpm-action-btn cpm-danger-btn" id="cpm-batch-delete">${t('manager.batchDelete')}</button><span style="flex-grow: 1;"></span><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-original" title="${t('export.batchOriginal')}"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-original"></use></svg></button><button class="cpm-icon-btn cpm-batch-export-btn" id="cpm-batch-export-custom" title="${t('export.batchCustom')}"><svg class="cpm-svg-icon" style="width:20px; height:20px;" stroke-width="1.5"><use href="#cpm-icon-batch-export-custom"></use></svg></button></div>
+                <div class="cpm-list-container"><p class="cpm-loading">${t('manager.refreshButtonTip')}</p></div>
+                <div class="cpm-status-bar">${t('manager.ready')}</div>`;
             document.body.appendChild(mainPanel);
 
             const settingsPanel = document.createElement('div');
             settingsPanel.id = 'cpm-settings-panel';
             settingsPanel.className = 'cpm-panel';
 
-            const settingsHeader = `<div class="cpm-header"><h2>管理器设置</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>`;
+            const settingsHeader = `<div class="cpm-header"><h2>${t('settings.title')}</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>`;
             const settingsContent = document.createElement('div');
             settingsContent.className = 'cpm-settings-content';
 
@@ -1898,7 +2478,7 @@
                 settingsContent.appendChild(section);
             }
 
-            const settingsButtons = `<div class="cpm-settings-buttons"><button id="cpm-back-to-main" class="cpm-btn">返回主面板</button><button id="cpm-save-settings-button" class="cpm-btn cpm-primary-btn">保存设置</button></div>`;
+            const settingsButtons = `<div class="cpm-settings-buttons"><button id="cpm-back-to-main" class="cpm-btn">${t('settings.backToMain')}</button><button id="cpm-save-settings-button" class="cpm-btn cpm-primary-btn">${t('settings.save')}</button></div>`;
 
             settingsPanel.innerHTML = settingsHeader;
             settingsPanel.appendChild(settingsContent);
@@ -1910,8 +2490,8 @@
             treePanel.id = 'cpm-tree-panel';
             treePanel.className = 'cpm-panel cpm-tree-panel-override';
             treePanel.innerHTML = `
-                <div class="cpm-header"><h2 id="cpm-tree-title">对话树预览</h2><button id="cpm-tree-close-button" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
-                <div id="cpm-tree-container" class="cpm-tree-container"><p class="cpm-loading">正在加载对话树...</p></div>`;
+                <div class="cpm-header"><h2 id="cpm-tree-title">${t('tree.preview')}</h2><button id="cpm-tree-close-button" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
+                <div id="cpm-tree-container" class="cpm-tree-container"><p class="cpm-loading">${t('tree.loading')}</p></div>`;
             document.body.appendChild(treePanel);
         },
         bindEvents() {
@@ -1983,20 +2563,20 @@
             for (const module of SettingsRegistry.modules) {
                 module.save(panel);
             }
-            this.updateStatus('设置已保存！', 'success', 3000);
+            this.updateStatus(t('settings.saved'), 'success', 3000);
             this.togglePanel('cpm-main-panel');
         },
         async loadConversations() {
             const listContainer = document.querySelector('#cpm-main-panel .cpm-list-container');
-            listContainer.innerHTML = '<p class="cpm-loading">正在加载会话列表...</p>';
-            this.updateStatus("正在获取会话列表...", 'info');
+            listContainer.innerHTML = `<p class="cpm-loading">${t('manager.loading')}</p>`;
+            this.updateStatus(t('manager.loading'), 'info');
             try {
                 const convos = await ManagerService.loadConversations();
                 this.renderConversationList();
-                this.updateStatus(`已加载 ${convos.length} 个会话。`, 'info');
+                this.updateStatus(`${t('status.loadedSessions')} ${convos.length} ${t('exportStatus.sessions')}。`, 'info');
             } catch (error) {
-                listContainer.innerHTML = `<p class="cpm-error">加载会话失败: ${error.message}</p>`;
-                this.updateStatus("加载失败。", 'error');
+                listContainer.innerHTML = `<p class="cpm-error">${t('error.loadSessionsFailed')}: ${error.message}</p>`;
+                this.updateStatus(t('status.loadFailed'), 'error');
             }
         },
         escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); },
@@ -2019,13 +2599,13 @@
                     default: return new Date(b.updated_at) - new Date(a.updated_at);
                 }
             });
-            if (conversationsToRender.length === 0) { listContainer.innerHTML = '<p>没有符合条件的会话。</p>'; return; }
+            if (conversationsToRender.length === 0) { listContainer.innerHTML = `<p>${t('manager.noResults')}</p>`; return; }
             const ul = document.createElement('ul');
             ul.className = 'cpm-convo-list';
             conversationsToRender.forEach(convo => {
                 const li = document.createElement('li');
                 li.dataset.uuid = convo.uuid;
-                const titleText = convo.name || '无标题对话';
+                const titleText = convo.name || t('treeView.untitled');
                 let highlightedTitle = titleText;
                 if (this.currentSearch) highlightedTitle = titleText.replace(new RegExp(this.escapeRegExp(this.currentSearch), 'gi'), (match) => `<span class="cpm-highlight">${match}</span>`);
                 const star = convo.is_starred ? '<span class="cpm-star">★</span>' : '';
@@ -2033,10 +2613,10 @@
                     <input type="checkbox" class="cpm-checkbox" data-uuid="${convo.uuid}">
                     <div class="cpm-convo-details"><span class="cpm-convo-title">${star}${highlightedTitle}</span><span class="cpm-convo-date">${new Date(convo.updated_at).toLocaleString()}</span></div>
                     <div class="cpm-convo-actions">
-                        <button class="cpm-icon-btn cpm-action-rename" title="手动重命名"><svg class="cpm-svg-icon"><use href="#cpm-icon-edit"></use></svg></button>
-                        <button class="cpm-icon-btn cpm-action-tree" title="预览对话树"><svg class="cpm-svg-icon"><use href="#cpm-icon-tree"></use></svg></button>
-                        <button class="cpm-icon-btn cpm-action-export-original" title="原始JSON导出"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-export-original"></use></svg></button>
-                        <button class="cpm-icon-btn cpm-action-export-custom" title="自定义JSON导出"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-export-custom"></use></svg></button>
+                        <button class="cpm-icon-btn cpm-action-rename" title="${t('action.manualRename')}"><svg class="cpm-svg-icon"><use href="#cpm-icon-edit"></use></svg></button>
+                        <button class="cpm-icon-btn cpm-action-tree" title="${t('action.previewTree')}"><svg class="cpm-svg-icon"><use href="#cpm-icon-tree"></use></svg></button>
+                        <button class="cpm-icon-btn cpm-action-export-original" title="${t('export.original')}"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-export-original"></use></svg></button>
+                        <button class="cpm-icon-btn cpm-action-export-custom" title="${t('export.custom')}"><svg class="cpm-svg-icon" stroke-width="1.5"><use href="#cpm-icon-export-custom"></use></svg></button>
                     </div>`;
                 ul.appendChild(li);
             });
@@ -2054,7 +2634,7 @@
             li.dataset.originalDetails = detailsDiv.innerHTML;
             li.dataset.originalActions = actionsDiv.innerHTML;
             detailsDiv.innerHTML = `<input type="text" class="cpm-edit-input" value="${escapeHTML(originalTitle)}">`;
-            actionsDiv.innerHTML = `<button class="cpm-icon-btn cpm-action-save" title="保存"><svg class="cpm-svg-icon"><use href="#cpm-icon-save"></use></svg></button><button class="cpm-icon-btn cpm-action-cancel" title="取消"><svg class="cpm-svg-icon"><use href="#cpm-icon-cancel"></use></svg></button>`;
+            actionsDiv.innerHTML = `<button class="cpm-icon-btn cpm-action-save" title="${t('common.save')}"><svg class="cpm-svg-icon"><use href="#cpm-icon-save"></use></svg></button><button class="cpm-icon-btn cpm-action-cancel" title="${t('common.cancel')}"><svg class="cpm-svg-icon"><use href="#cpm-icon-cancel"></use></svg></button>`;
             const input = detailsDiv.querySelector('.cpm-edit-input');
             input.focus();
             input.select();
@@ -2078,16 +2658,16 @@
             const originalTitle = li.dataset.originalDetails.match(/<span class="cpm-convo-title">(.*?)<\/span>/)[1].replace(/<[^>]*>/g, '').replace(/★/g, '').trim();
             if (!newTitle || newTitle === originalTitle) { this.exitEditMode(li); return; }
             input.disabled = true;
-            this.updateStatus(`正在保存新标题...`, 'info');
+            this.updateStatus(t('status.savingTitle'), 'info');
             try {
                 await ManagerService.performManualRename(uuid, newTitle);
-                this.updateStatus("保存成功！", 'success');
+                this.updateStatus(t('status.saveSuccess'), 'success');
                 const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
                 const star = convo.is_starred ? '<span class="cpm-star">★</span>' : '';
                 li.dataset.originalDetails = li.dataset.originalDetails.replace(/>(★)?.*?<\/span>/, `>${star}${newTitle}</span>`);
                 this.exitEditMode(li);
             } catch (error) {
-                this.updateStatus(`保存失败: ${error.message}`, 'error');
+                this.updateStatus(`${t('status.saveFailed')}: ${error.message}`, 'error');
                 input.disabled = false;
                 input.focus();
             }
@@ -2097,15 +2677,15 @@
             const treeContainer = document.getElementById('cpm-tree-container');
             const treeTitle = document.getElementById('cpm-tree-title');
             const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
-            treeTitle.textContent = `对话树: ${convo ? (convo.name || '无标题') : '加载中...'}`;
-            treeContainer.innerHTML = '<p class="cpm-loading">正在加载对话历史...</p>';
+            treeTitle.textContent = `${t('treeView.prefix')}${convo ? (convo.name || t('treeView.untitled')) : t('treeView.loading')}`;
+            treeContainer.innerHTML = `<p class="cpm-loading">${t('navigator.loadingHistory')}</p>`;
             treePanel.style.display = 'flex';
             try {
                 const historyData = await ClaudeAPI.getConversationHistory(uuid);
                 await SharedLogic.renderTreeView(treeContainer, historyData.chat_messages);
             } catch (error) {
                 console.error(error);
-                treeContainer.innerHTML = `<p class="cpm-error">无法加载对话树: ${error.message}</p>`;
+                treeContainer.innerHTML = `<p class="cpm-error">${t('error.cannotLoadTree')}: ${error.message}</p>`;
             }
         },
         async handleExport(uuid, type) {
@@ -2127,22 +2707,22 @@
             else if (type === 'success') s.classList.add('is-success');
             if (timeout > 0) {
                 this.statusTimeout = setTimeout(() => {
-                    s.textContent = '准备就绪。';
+                    s.textContent = t('status.ready');
                     s.classList.remove('is-error', 'is-success');
                 }, timeout);
             }
         },
-        async handleBatchOperation(opName, serviceFunc, ...args) {
+        async handleBatchOperation(opName, serviceFunc, opType, ...args) {
             const uuids = this.getSelectedUuids();
-            if (uuids.length === 0) { alert(`请选择要执行“${opName}”的会话。`); return; }
-            if (opName.includes('删除') && !confirm(`确定永久删除 ${uuids.length} 个会话吗？`)) return;
+            if (uuids.length === 0) { alert(t('error.selectSessions').replace('{0}', opName)); return; }
+            if (opType === 'delete' && !confirm(t('batchOps.confirmDelete').replace('{0}', uuids.length))) return;
             document.querySelectorAll('.cpm-action-btn').forEach(btn => btn.disabled = true);
-            this.updateStatus(`正在批量${opName} ${uuids.length} 个会话...`, 'info');
+            this.updateStatus(t('status.batchProcessing').replace('{0}', opName).replace('{1}', uuids.length), 'info');
             let successCount = 0;
             try {
-                if (opName.includes('重命名')) {
+                if (opType === 'rename') {
                      for (let i = 0; i < uuids.length; i++) {
-                        this.updateStatus(`正在${opName} ${i + 1}/${uuids.length}...`, 'info');
+                        this.updateStatus(t('status.batchItemProcessing').replace('{0}', opName).replace('{1}', i + 1).replace('{2}', uuids.length), 'info');
                         try {
                             const newTitle = await serviceFunc(uuids[i]);
                             const titleElement = document.querySelector(`li[data-uuid="${uuids[i]}"] .cpm-convo-title`);
@@ -2155,7 +2735,7 @@
                         } catch (error) {
                              const titleElement = document.querySelector(`li[data-uuid="${uuids[i]}"] .cpm-convo-title`);
                              if(titleElement) { titleElement.style.color = 'hsl(var(--cpm-danger-000))'; }
-                             this.updateStatus(`第${i+1}个失败: ${error.message}`, 'error');
+                             this.updateStatus(`${t('status.batchItemFailed').replace('{0}', i+1)}: ${error.message}`, 'error');
                              await new Promise(resolve => setTimeout(resolve, 1500));
                         }
                         if (i < uuids.length - 1) await new Promise(resolve => setTimeout(resolve, 300));
@@ -2163,21 +2743,21 @@
                 } else {
                     successCount = await serviceFunc(uuids, ...args);
                 }
-                this.updateStatus(`操作完成。成功${opName} ${successCount}/${uuids.length} 个会话。`, 'success', 4000);
-            } catch(e) { this.updateStatus(`批量${opName}失败: ${e.message}`, 'error', 5000); }
-            const refreshSettingKey = opName.includes('删除') ? 'refreshAfterDelete' : opName.includes('收藏') ? 'refreshAfterStar' : 'refreshAfterRename';
+                this.updateStatus(t('status.batchOperationComplete').replace('{0}', opName).replace('{1}', successCount).replace('{2}', uuids.length), 'success', 4000);
+            } catch(e) { this.updateStatus(`${t('status.batchOperationFailed').replace('{0}', opName)}: ${e.message}`, 'error', 5000); }
+            const refreshSettingKey = opType === 'delete' ? 'refreshAfterDelete' : opType === 'star' ? 'refreshAfterStar' : 'refreshAfterRename';
             if (GM_getValue(refreshSettingKey, false)) {
-                this.updateStatus(document.querySelector('#cpm-main-panel .cpm-status-bar').textContent + ' 正在从服务器刷新列表...', 'info');
+                this.updateStatus(document.querySelector('#cpm-main-panel .cpm-status-bar').textContent + t('status.refreshingFromServer'), 'info');
                 await this.loadConversations();
             } else { this.renderConversationList(); }
             document.querySelectorAll('.cpm-action-btn').forEach(btn => btn.disabled = false);
         },
-        handleBatchRename() { this.handleBatchOperation('重命名', ManagerService.performAutoRename.bind(ManagerService)); },
-        handleBatchDelete() { this.handleBatchOperation('删除', ManagerService.performBatchDelete.bind(ManagerService)); },
-        handleBatchStar(isStarring) { this.handleBatchOperation(isStarring ? '收藏' : '取消收藏', ManagerService.performBatchStarAction.bind(ManagerService), isStarring); },
+        handleBatchRename() { this.handleBatchOperation(t('operation.rename'), ManagerService.performAutoRename.bind(ManagerService), 'rename'); },
+        handleBatchDelete() { this.handleBatchOperation(t('operation.delete'), ManagerService.performBatchDelete.bind(ManagerService), 'delete'); },
+        handleBatchStar(isStarring) { this.handleBatchOperation(isStarring ? t('operation.star') : t('operation.unstar'), ManagerService.performBatchStarAction.bind(ManagerService), 'star', isStarring); },
         handleBatchExport(type) {
             const uuids = this.getSelectedUuids();
-            if (uuids.length === 0) { alert('请选择要导出的会话。'); return; }
+            if (uuids.length === 0) { alert(t('error.selectExportSessions')); return; }
 
             if (type === 'original') {
                 this.performBatchExportOriginal(uuids);
@@ -2187,18 +2767,18 @@
         },
         async performBatchExportOriginal(uuids) {
             if (typeof window.showDirectoryPicker !== 'function') {
-                alert('您的浏览器不支持 File System Access API。');
+                alert(t('error.browserNotSupported'));
                 return;
             }
 
-            this.updateStatus(`准备批量导出 ${uuids.length} 个会话...`, 'info');
+            this.updateStatus(t('status.batchExportPreparing').replace('{0}', uuids.length), 'info');
 
             let rootDirHandle;
             try {
                 rootDirHandle = await window.showDirectoryPicker();
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    this.updateStatus("用户取消了文件夹选择。", 'info', 3000);
+                    this.updateStatus(t('export.userCancelled'), 'info', 3000);
                     return;
                 }
                 throw err;
@@ -2208,16 +2788,16 @@
             for (let i = 0; i < uuids.length; i++) {
                 const uuid = uuids[i];
                 const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
-                const title = convo ? (convo.name || '无标题') : '加载中...';
+                const title = convo ? (convo.name || t('treeView.untitled')) : t('treeView.loading');
 
-                this.updateStatus(`(${i + 1}/${uuids.length}) 正在导出: ${title}`, 'info');
+                this.updateStatus(t('export.exportingProgress', 'export.exportingProgress', i + 1, uuids.length, title), 'info');
 
                 try {
                     await this.exportSingleConversation(uuid, rootDirHandle, 'original');
                     successCount++;
                 } catch (error) {
-                    console.error(`导出会话 ${uuid} 失败:`, error);
-                    this.updateStatus(`导出失败 (${i + 1}/${uuids.length}): ${error.message}`, 'error');
+                    console.error(t('export.sessionFailed', 'export.sessionFailed', uuid) + ':', error);
+                    this.updateStatus(t('export.exportFailed', 'export.exportFailed', i + 1, uuids.length, error.message), 'error');
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
 
@@ -2226,12 +2806,12 @@
                 }
             }
 
-            this.updateStatus(`批量导出完成: ${successCount}/${uuids.length} 个会话成功导出。`, 'success', 5000);
+            this.updateStatus(t('export.batchComplete', 'export.batchComplete', successCount, uuids.length), 'success', 5000);
         },
         async exportSingleConversation(uuid, rootDirHandle, type) {
             const historyData = await ClaudeAPI.getConversationHistory(uuid);
             const orgInfo = await ClaudeAPI.getOrganizationInfo();
-            if (!orgInfo) throw new Error("缺少导出所需组织信息。");
+            if (!orgInfo) throw new Error(t('export.orgInfoRequired'));
 
             const orgName = (orgInfo.name || "unknown_org").replace(/'s Organization$/, "");
             const safeTitle = (historyData.name || "Untitled").replace(/[<>:"/\\|?*]/g, '_');
@@ -2273,14 +2853,14 @@
             modalContent.style.display = 'flex';
             modalContent.innerHTML = `
                 <div class="cpm-header">
-                    <h2>批量自定义导出选项 (${uuids.length} 个会话)</h2>
+                    <h2>${t('exportSettings.batchCustomOptions')} (${uuids.length} ${t('exportStatus.sessions')})</h2>
                     <button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
                 </div>
                 <div class="cpm-settings-content">
                     ${this.createExportSettingsHTML(false)}
                 </div>
                 <div class="cpm-settings-buttons">
-                    <button id="cpm-batch-export-now-btn" class="cpm-btn cpm-primary-btn">开始批量导出</button>
+                    <button id="cpm-batch-export-now-btn" class="cpm-btn cpm-primary-btn">${t('exportSettings.batchExportNow')}</button>
                 </div>
             `;
             overlay.appendChild(modalContent);
@@ -2296,29 +2876,29 @@
                     const currentSettings = this.getExportSettings(modalContent);
                     this.tempBatchExportSettings = currentSettings;
                     modalContent.querySelector('#cpm-batch-export-now-btn').disabled = true;
-                    modalContent.querySelector('#cpm-batch-export-now-btn').textContent = '准备导出...';
+                    modalContent.querySelector('#cpm-batch-export-now-btn').textContent = t('status.preparingExport');
                     overlay.remove();
                     await this.performBatchExportCustom(uuids);
                 } catch (error) {
                     console.error(`${LOG_PREFIX} 批量导出失败:`, error);
-                    this.updateStatus(`批量导出失败: ${error.message}`, 'error');
+                    this.updateStatus(`${t('status.batchExportFailed')}: ${error.message}`, 'error');
                 }
             };
         },
         async performBatchExportCustom(uuids) {
             if (typeof window.showDirectoryPicker !== 'function') {
-                alert('您的浏览器不支持 File System Access API。');
+                alert(t('error.browserNotSupported'));
                 return;
             }
 
-            this.updateStatus(`准备批量自定义导出 ${uuids.length} 个会话...`, 'info');
+            this.updateStatus(`${t('exportStatus.batchPreparing')} ${uuids.length} ${t('exportStatus.sessions')}...`, 'info');
 
             let rootDirHandle;
             try {
                 rootDirHandle = await window.showDirectoryPicker();
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    this.updateStatus("用户取消了文件夹选择。", 'info', 3000);
+                    this.updateStatus(t('export.userCancelled'), 'info', 3000);
                     return;
                 }
                 throw err;
@@ -2328,16 +2908,16 @@
             for (let i = 0; i < uuids.length; i++) {
                 const uuid = uuids[i];
                 const convo = ManagerService.conversationsCache.find(c => c.uuid === uuid);
-                const title = convo ? (convo.name || '无标题') : '加载中...';
+                const title = convo ? (convo.name || t('treeView.untitled')) : t('treeView.loading');
 
-                this.updateStatus(`(${i + 1}/${uuids.length}) 正在导出: ${title}`, 'info');
+                this.updateStatus(t('export.exportingProgress', 'export.exportingProgress', i + 1, uuids.length, title), 'info');
 
                 try {
                     await this.exportSingleConversation(uuid, rootDirHandle, 'custom');
                     successCount++;
                 } catch (error) {
-                    console.error(`导出会话 ${uuid} 失败:`, error);
-                    this.updateStatus(`导出失败 (${i + 1}/${uuids.length}): ${error.message}`, 'error');
+                    console.error(t('export.sessionFailed', 'export.sessionFailed', uuid) + ':', error);
+                    this.updateStatus(t('export.exportFailed', 'export.exportFailed', i + 1, uuids.length, error.message), 'error');
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
 
@@ -2347,57 +2927,57 @@
             }
 
             delete this.tempBatchExportSettings;
-            this.updateStatus(`批量自定义导出完成: ${successCount}/${uuids.length} 个会话成功导出。`, 'success', 5000);
+            this.updateStatus(t('export.batchComplete').replace('{0}', successCount).replace('{1}', uuids.length), 'success', 5000);
         },
 
         createExportSettingsHTML(forSettingsPanel = false) {
-            const maybeRemoveTitle = forSettingsPanel ? '' : '<h3 class="cpm-setting-section-title">自定义导出默认设置</h3>';
+            const maybeRemoveTitle = forSettingsPanel ? '' : `<h3 class="cpm-setting-section-title">${t('settings.exportDefaults')}</h3>`;
             return `
                 ${maybeRemoveTitle}
                 <div class="cpm-setting-group" data-section="export-metadata">
-                    <h4>基础信息</h4>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-include"><label for="cpm-export-meta-include">保留会话元数据</label></div>
+                    <h4>${t('exportSettings.basicInfo')}</h4>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-include"><label for="cpm-export-meta-include">${t('exportSettings.keepMetadata')}</label></div>
                     <div class="cpm-setting-sub-group" data-parent="meta-include">
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-title"><label for="cpm-export-meta-title">标题 (name)</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-summary"><label for="cpm-export-meta-summary">摘要 (summary)</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-main-timestamps"><label for="cpm-export-meta-main-timestamps">会话创建/更新时间</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-conv-settings"><label for="cpm-export-meta-conv-settings">会话设置 (settings)</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-title"><label for="cpm-export-meta-title">${t('exportSettings.title')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-summary"><label for="cpm-export-meta-summary">${t('exportSettings.summary')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-main-timestamps"><label for="cpm-export-meta-main-timestamps">${t('exportSettings.sessionTimestamp')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-meta-conv-settings"><label for="cpm-export-meta-conv-settings">${t('exportSettings.sessionSettings')}</label></div>
                     </div>
                 </div>
                  <div class="cpm-setting-group" data-section="export-message">
-                    <h4>消息结构</h4>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-sender"><label for="cpm-export-msg-sender">发送者 (sender)</label></div>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-uuids"><label for="cpm-export-msg-uuids">消息/父级UUID (建议保留)</label></div>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-other-meta"><label for="cpm-export-msg-other-meta">其他元数据 (index, stop_reason等)</label></div>
+                    <h4>${t('exportSettings.messageStructure')}</h4>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-sender"><label for="cpm-export-msg-sender">${t('exportSettings.sender')}</label></div>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-uuids"><label for="cpm-export-msg-uuids">${t('exportSettings.messageUuids')}</label></div>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-msg-other-meta"><label for="cpm-export-msg-other-meta">${t('exportSettings.otherMeta')}</label></div>
                 </div>
                 <div class="cpm-setting-group" data-section="export-timestamps">
-                    <h4>时间戳信息</h4>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-message"><label for="cpm-export-ts-message">消息节点时间戳 (created_at/updated_at)</label></div>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-content"><label for="cpm-export-ts-content">内容块流式时间戳 (start/stop)</label></div>
-                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-attachment"><label for="cpm-export-ts-attachment">附件创建时间戳</label></div>
+                    <h4>${t('exportSettings.timestampInfo')}</h4>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-message"><label for="cpm-export-ts-message">${t('exportSettings.messageTimestamp')}</label></div>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-content"><label for="cpm-export-ts-content">${t('exportSettings.contentTimestamp')}</label></div>
+                     <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-ts-attachment"><label for="cpm-export-ts-attachment">${t('exportSettings.attachmentTimestamp')}</label></div>
                 </div>
                  <div class="cpm-setting-group" data-section="export-content">
-                    <h4>核心内容</h4>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-content-text"><label for="cpm-export-content-text">文本内容 (text块)</label></div>
+                    <h4>${t('exportSettings.coreContent')}</h4>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-content-text"><label for="cpm-export-content-text">${t('exportSettings.textContent')}</label></div>
                     <div class="cpm-setting-item">
-                        <label class="cpm-settings-label">附件信息:</label>
+                        <label class="cpm-settings-label">${t('exportSettings.attachmentInfo')}</label>
                         <select id="cpm-export-attachments-mode">
-                            <option value="full">完整信息 (含提取文本)</option>
-                            <option value="metadata_only">仅元数据 (文件名,大小等)</option>
-                            <option value="none">不保留附件</option>
+                            <option value="full">${t('exportSettings.attachmentFull')}</option>
+                            <option value="metadata_only">${t('exportSettings.attachmentMetaOnly')}</option>
+                            <option value="none">${t('exportSettings.attachmentNone')}</option>
                         </select>
                     </div>
                 </div>
                  <div class="cpm-setting-group" data-section="export-advanced">
-                    <h4>高级内容</h4>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-thinking"><label for="cpm-export-adv-thinking">'思考'过程 (thinking块)</label></div>
-                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tools-include"><label for="cpm-export-adv-tools-include">保留工具使用记录</label></div>
+                    <h4>${t('exportSettings.advancedContent')}</h4>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-thinking"><label for="cpm-export-adv-thinking">${t('exportSettings.thinkingProcess')}</label></div>
+                    <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tools-include"><label for="cpm-export-adv-tools-include">${t('exportSettings.toolRecords')}</label></div>
                     <div class="cpm-setting-sub-group" data-parent="adv-tools-include">
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-websearch"><label for="cpm-export-adv-tool-websearch">网页搜索 (web_search)</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-repl"><label for="cpm-export-adv-tool-repl">代码分析 (repl)</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-artifacts"><label for="cpm-export-adv-tool-artifacts">工件创建 (artifacts)</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-other"><label for="cpm-export-adv-tool-other">其他未知工具</label></div>
-                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-only-successful"><label for="cpm-export-adv-tool-only-successful">仅保留成功的工具调用</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-websearch"><label for="cpm-export-adv-tool-websearch">${t('exportSettings.webSearch')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-repl"><label for="cpm-export-adv-tool-repl">${t('exportSettings.codeAnalysis')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-artifacts"><label for="cpm-export-adv-tool-artifacts">${t('exportSettings.artifactCreation')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-other"><label for="cpm-export-adv-tool-other">${t('exportSettings.otherTools')}</label></div>
+                        <div class="cpm-setting-item"><input type="checkbox" id="cpm-export-adv-tool-only-successful"><label for="cpm-export-adv-tool-only-successful">${t('exportSettings.successfulOnly')}</label></div>
                     </div>
                 </div>
             `;
@@ -2543,12 +3123,12 @@
             modalContent.className = 'cpm-panel cpm-export-modal-content';
             modalContent.style.display = 'flex';
             modalContent.innerHTML = `
-                <div class="cpm-header"><h2>自定义导出选项</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
+                <div class="cpm-header"><h2>${t('exportSettings.customOptions')}</h2><button class="cpm-close-button cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button></div>
                 <div class="cpm-settings-content">
                     ${this.createExportSettingsHTML(false)}
                 </div>
                 <div class="cpm-settings-buttons">
-                    <button id="cpm-export-now-btn" class="cpm-btn cpm-primary-btn">立即导出</button>
+                    <button id="cpm-export-now-btn" class="cpm-btn cpm-primary-btn">${t('exportSettings.exportNow')}</button>
                 </div>
             `;
             overlay.appendChild(modalContent);
@@ -2563,14 +3143,14 @@
                 try {
                     const currentSettings = this.getExportSettings(modalContent);
                     modalContent.querySelector('#cpm-export-now-btn').disabled = true;
-                    modalContent.querySelector('#cpm-export-now-btn').textContent = '正在导出...';
+                    modalContent.querySelector('#cpm-export-now-btn').textContent = t('status.exporting');
                     await ManagerService.performExportCustom(uuid, currentSettings, this.updateStatus.bind(this));
                     overlay.remove();
                 } catch (error) {
                     console.error(`${LOG_PREFIX} 导出失败:`, error);
-                    this.updateStatus(`导出失败: ${error.message}`, 'error');
+                    this.updateStatus(`${t('status.exportFailed')}: ${error.message}`, 'error');
                     modalContent.querySelector('#cpm-export-now-btn').disabled = false;
-                    modalContent.querySelector('#cpm-export-now-btn').textContent = '立即导出';
+                    modalContent.querySelector('#cpm-export-now-btn').textContent = t('exportSettings.exportNow');
                 }
             };
         },
@@ -2617,7 +3197,7 @@
             const button = document.createElement('button');
             button.id = 'cpm-branch-btn';
             button.type = 'button';
-            button.title = '从对话历史的任意节点延续&导航至任意节点';
+            button.title = t('tooltip.navigatorButton');
             button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
             button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-tree"></use></svg></div>`;
             button.onclick = () => this.showModal();
@@ -2635,12 +3215,12 @@
             modalContent.onclick = (e) => e.stopPropagation();
             modalContent.innerHTML = `
                 <div class="cpm-header">
-                    <h2>对话节点延续&导航器</h2>
+                    <h2>${t('navigator.title')}</h2>
                     <button id="cpm-navigator-modal-close-btn" class="cpm-icon-btn"><svg class="cpm-svg-icon"><use href="#cpm-icon-close"></use></svg></button>
                 </div>
                 <div class="cpm-mode-selector">
-                    <button id="cpm-branch-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'branch' ? 'active' : ''}">延续模式</button>
-                    <button id="cpm-navigate-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'navigate' ? 'active' : ''}">导航模式</button>
+                    <button id="cpm-branch-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'branch' ? 'active' : ''}">${t('navigator.branchMode')}</button>
+                    <button id="cpm-navigate-mode-btn" class="cpm-mode-btn ${this.state.currentMode === 'navigate' ? 'active' : ''}">${t('navigator.navigateMode')}</button>
                 </div>
                 <div id="cpm-navigator-tree-container" class="cpm-tree-container"></div>`;
 
@@ -2666,13 +3246,13 @@
         async loadModalContent(modalContent) {
             const treeContainer = modalContent.querySelector('#cpm-navigator-tree-container');
             if (this.state.conversationUUID) {
-                treeContainer.innerHTML = '<p class="cpm-loading">正在加载对话历史...</p>';
+                treeContainer.innerHTML = `<p class="cpm-loading">${t('navigator.loading')}</p>`;
                 try {
                     // 使用智能缓存机制，避免重复请求
                     await ClaudeAPI.tryInitializeConversationTree();
 
                     if (!ClaudeAPI.conversationTree) {
-                        throw new Error('无法获取对话数据');
+                        throw new Error(t('error.cannotGetConvoData'));
                     }
 
                     // 从缓存的对话树获取消息数据
@@ -2684,10 +3264,10 @@
                         onNodeClick: (uuid, element) => this.handleNodeClick(uuid, element)
                     });
                 } catch (error) {
-                    treeContainer.innerHTML = `<p class="cpm-error">加载失败: ${error.message}</p>`;
+                    treeContainer.innerHTML = `<p class="cpm-error">${t('status.loadFailed')}: ${error.message}</p>`;
                 }
             } else {
-                treeContainer.innerHTML = '<p class="cpm-loading">不在具体聊天内，无法操作节点。</p>';
+                treeContainer.innerHTML = `<p class="cpm-loading">${t('navigator.notInChat')}</p>`;
             }
         },
 
@@ -2726,8 +3306,8 @@
             if (this.state.selectedParentMessageUUID) {
                 const indicator = document.createElement('span');
                 indicator.id = 'cpm-branch-status-indicator';
-                indicator.textContent = '分支点已选定';
-                indicator.title = `下条消息将从指定节点开始。\nUUID: ${this.state.selectedParentMessageUUID}`;
+                indicator.textContent = t('navigator.branchSelected');
+                indicator.title = `${t('navigator.nextMessageFrom')}\nUUID: ${this.state.selectedParentMessageUUID}`;
                 toolbar.appendChild(indicator);
             }
         },
@@ -2784,7 +3364,7 @@
             const button = document.createElement('button');
             button.id = 'cpm-ln-linear-navigator-btn';
             button.type = 'button';
-            button.title = '线性导航';
+            button.title = t('tooltip.linearNavButton');
             button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
             button.style.fontWeight = "normal";
             button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px;"><use href="#cpm-ln-icon-linear-navigator"></use></svg></div>`;
@@ -3004,7 +3584,7 @@
             const wrapperDiv = document.createElement('div');
             wrapperDiv.className = "relative shrink-0";
             wrapperDiv.innerHTML = `
-                <button class="inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100" type="button" id="cpm-attachment-power-btn" aria-label="打开PDF上传设置">
+                <button class="inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100" type="button" id="cpm-attachment-power-btn" aria-label="${t('tooltip.pdfButton')}" title="${t('tooltip.pdfButton')}">
                     <div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-attachment"></use></svg></div>
                 </button>
                 <div class="w-[24rem] absolute max-w-[calc(100vw-16px)] bottom-10 block hidden" id="cpm-attachment-power-menu">
@@ -3017,8 +3597,8 @@
                                             <div id="cpm-icon-mode-off"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-pdf-mode-off"></use></svg></div>
                                             <div id="cpm-icon-mode-on" class="hidden"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-pdf-mode-on"></use></svg></div>
                                         </div>
-                                        <div class="flex flex-col flex-1 min-w-0"><p class="text-[0.9375rem] text-text-300 group-hover:text-text-100">Force PDF Deep Analysis</p></div>
-                                        <div class="flex items-center justify-center text-text-400" title="此功能为普通账户设计，可强制使用高级解析路径。Pro/Team账户原生支持，此开关对其无效。"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.5;"><use href="#cpm-icon-help"></use></svg></div>
+                                        <div class="flex flex-col flex-1 min-w-0"><p class="text-[0.9375rem] text-text-300 group-hover:text-text-100">${t('pdf.forceModeText')}</p></div>
+                                        <div class="flex items-center justify-center text-text-400" title="${t('tooltip.pdfHelp')}"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.5;"><use href="#cpm-icon-help"></use></svg></div>
                                         <div class="group/switch relative select-none cursor-pointer ml-2">
                                             <input class="peer sr-only" type="checkbox" id="cpm-attachment-mode-toggle-switch">
                                             <div class="border-border-300 rounded-full peer:can-focus peer-disabled:opacity-50 bg-bg-500 transition-colors peer-checked:bg-accent-secondary-100" style="width: 28px; height: 16px;"></div>
@@ -3085,8 +3665,8 @@
                 panel.id = Config.ATTACHMENT_PANEL_ID;
                 panel.innerHTML = `
                     <div class="cpm-attachment-panel-header">
-                        <span>PDF深度解析暂存区</span>
-                        <button class="cpm-icon-btn cpm-attachment-panel-close-btn" title="关闭并清空所有暂存文件">
+                        <span>${t('attachment.title')}</span>
+                        <button class="cpm-icon-btn cpm-attachment-panel-close-btn" title="${t('attachment.close')}">
                              <svg class="cpm-svg-icon" style="width:16px; height:16px;"><use href="#cpm-icon-close"></use></svg>
                         </button>
                     </div>
@@ -3144,10 +3724,10 @@
             wrapper.className = 'cpm-preview-thumbnail-wrapper';
             wrapper.id = `thumbnail-wrapper-${fileInfo.uuid}`;
             wrapper.innerHTML = `
-                <button class="cpm-preview-delete-btn" data-uuid="${fileInfo.uuid}" title="移除文件">
+                <button class="cpm-preview-delete-btn" data-uuid="${fileInfo.uuid}" title="${t('attachment.removeFile')}">
                     <svg class="cpm-svg-icon" style="width:12px; height:12px;"><use href="#cpm-icon-close"></use></svg>
                 </button>
-                <a href="${previewUrl}" target="_blank" rel="noopener noreferrer" class="cpm-preview-thumbnail-link" title="点击预览: ${fileInfo.fileName}">
+                <a href="${previewUrl}" target="_blank" rel="noopener noreferrer" class="cpm-preview-thumbnail-link" title="${t('attachment.clickPreview')}: ${fileInfo.fileName}">
                     <img src="${fileInfo.thumbnailUrl}" alt="${fileInfo.fileName}">
                     <div class="cpm-preview-thumbnail-overlay">
                         <p class="cpm-preview-thumbnail-name">${fileInfo.fileName}</p>

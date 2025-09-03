@@ -1,157 +1,160 @@
-# Claude 神级拓展增强脚本 (Claude Powerest Manager & Enhancer)
+# Claude Powerest Manager & Enhancer
 
-[![版本](https://img.shields.io/badge/Version-1.2.1-blue.svg)](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
-[![许可证](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
-[![平台](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
-[![支持的网站](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
-[![支持的网站](https://img.shields.io/badge/Site-fuclaude.com-blue.svg)](https://demo.fuclaude.com)
-[![作者](https://img.shields.io/badge/Author-f14xuanlv-purple.svg)](https://github.com/f14XuanLv)
+[![Version](https://img.shields.io/badge/Version-1.2.2-blue.svg)](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
+[![Supported Site](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
+[![Author](https://img.shields.io/badge/Author-f14xuanlv-purple.svg)](https://github.com/f14XuanLv)
 
-[English Version](./README.en.md) | **中文说明**
 
-这是一款功能极其强大的 Tampermonkey 脚本，旨在全方位提升您的 Claude 使用体验。它集成了两大核心模块：一个全面的**对话管理器**和一个实时的**聊天增强器**，为您提供前所未有的控制力和便利性。
+[**Read this document in Chinese**](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/README_zh.md)
 
-| 脚本主界面预览 |
+This is an extremely powerful Tampermonkey script designed to enhance your Claude experience in every way. It integrates two core modules: a comprehensive **Conversation Manager** and a real-time **Chat Enhancer**, giving you unprecedented control and convenience.
+
+| Main Interface Preview |
 |-----------|
-| ![脚本主界面预览](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/main-preview.gif) |
+| ![Main Interface Preview](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/main-preview.gif) |
 
 ---
 
-| 管理器面板（自动重命名） |
+| Manager Panel (Auto-Rename) |
 |-----------|
-| ![管理器面板](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/auto-rename.gif) |
-| 从任意分支点延续演示 |
-| ![从任意分支点延续](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/continue-from-any-branch-node.gif) |
-| 跨分支导航至任意节点演示 |
-| ![跨分支导航至任意节点](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/branch-navigator.gif) |
-| PDF 强制深度解析 |
-| ![PDF 强制深度解析](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/force-pdf-analysis.gif) |
-| 线性导航面板 |
-| ![线性导航面板](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/linear-navigator.gif) |
-| 主题切换 |
-| ![主题切换](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/theme-switch.gif) |
+| ![Manager Panel](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/auto-rename.gif) |
+| Continue from Any Branch Node Demo |
+| ![Continue from Any Branch Node](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/continue-from-any-branch-node.gif) |
+| Cross-Branch Navigation to Any Node Demo |
+| ![Cross-Branch Navigation to Any Node](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/branch-navigator.gif) |
+| Force PDF Deep Analysis |
+| ![Force PDF Deep Analysis](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/force-pdf-analysis.gif) |
+| Linear Navigation Panel |
+| ![Linear Navigation Panel](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/linear-navigator.gif) |
+| Theme Switch |
+| ![Theme Switch](https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/docs/images/theme-switch.gif) |
 
 ---
 
-## 📺 演示视频
+## 📺 Demo Videos
 
-### BiliBili 视频演示
-[![Claude神级拓展增强脚本演示](https://i0.hdslb.com/bfs/archive/100ade411248453a4ed394a3faaf214d89c9e8e9.jpg)](https://www.bilibili.com/video/BV12RaczjEth)
+### BiliBili Demo Video
+[![Claude Powerest Manager & Enhancer Demo](https://i0.hdslb.com/bfs/archive/100ade411248453a4ed394a3faaf214d89c9e8e9.jpg)](https://www.bilibili.com/video/BV12RaczjEth)
 
-### YouTube 演示视频
+### YouTube Demo Video
 [![Claude Powerest Manager & Enhancer Demo](https://img.youtube.com/vi/lW2sbsHDyJM/maxresdefault.jpg)](https://youtu.be/lW2sbsHDyJM)
 
 ---
 
-## ✨ 核心功能
+## ✨ Core Features
 
-脚本主要分为两大功能区：**对话管理器** 和 **聊天增强器**。
+The script is divided into two main functional areas: **Conversation Manager** and **Chat Enhancer**.
 
-### 1. 对话管理器 (Manager)
+### 1. Conversation Manager
 
-通过点击 Claude 页面右下角的 **`Manager`** 按钮打开。这是一个功能强大的一站式管理中心，让您告别在侧边栏中费力寻找对话的烦恼。
+Opened by clicking the **`Manager`** button in the bottom-right corner of the Claude page. This is a powerful, one-stop management center that saves you from the hassle of searching for conversations in the sidebar.
 
--   **🗂️ 全局对话管理**:
-    -   **一键加载**: 轻松获取您的所有历史对话列表。
-    -   **强大搜索**: 按标题关键词即时搜索对话。
-    -   **智能排序**: 支持按更新时间、标题名称（A-Z, Z-A）等多种方式排序。
-    -   **高级筛选**: 可根据“已收藏”、“未收藏”、“纯ASCII标题”等条件快速筛选。
+-   **🗂️ Global Conversation Management**:
+    -   **One-Click Load**: Easily fetch a list of all your historical conversations.
+    -   **Powerful Search**: Instantly search conversations by title keywords.
+    -   **Smart Sorting**: Supports various sorting methods, including by update time and title name (A-Z, Z-A).
+    -   **Advanced Filtering**: Quickly filter by criteria such as "Favorited," "Not Favorited," and "ASCII-only Titles."
 
--   **⚡ 批量操作**:
-    -   **批量删除**: 勾选多个对话，一次性永久删除。
-    -   **批量收藏/取消收藏**: 快速整理您的重要对话。
-    -   **批量自动重命名**: 选中对话后，脚本将自动调用 Claude Title API，根据设置中设定的前几轮对话内容生成精准、高质量的标题（支持自定义标题语言）。
-    -   **批量原始JSON导出**: 一键导出多个对话的完整原始数据，包括所有元数据和附件信息，适合完整备份。
-    -   **批量自定义JSON导出**: 使用预设的自定义导出配置，批量导出经过精简和格式化的对话数据，适合数据分析和处理。
+-   **⚡ Bulk Operations**:
+    -   **Bulk Delete**: Select multiple conversations and permanently delete them at once.
+    -   **Bulk Favorite/Unfavorite**: Quickly organize your important conversations.
+    -   **Bulk Auto-Rename**: After selecting conversations, the script will automatically call the Claude Title API to generate accurate, high-quality titles based on the initial turns of the conversation (supports custom title language).
+    -   **Bulk Raw JSON Export**: One-click export of complete raw data for multiple conversations, including all metadata and attachment information, suitable for complete backups.
+    -   **Bulk Custom JSON Export**: Use preset custom export configurations to bulk-export streamlined and formatted conversation data, suitable for data analysis and processing.
 
--   **📥 强大的导出功能**:
-    -   **原始 JSON 导出**: 完整备份官方返回的所有数据，包括每一条消息的详细元数据和附件信息。
-    -   **自定义 JSON 导出**: 提供极高自由度的导出选项，您可以精细控制要保留的数据，例如：
-        -   是否包含会话元数据（标题、摘要、时间戳等）。
-        -   是否包含消息的 UUID、时间戳、停止原因等。
-        -   是否保留“思考中”的过程、工具使用记录（网页搜索、代码执行等）。
-        -   附件信息的保留级别（完整信息、仅元数据、不保留）。
-    -   **附件一并下载**: 进行原始导出时，或在自定义导出中选择保留附件时，脚本会自动将对话中包含的所有附件（PDF, TXT, CSV 等）下载到同一文件夹，并根据其来源和 UUID 智能命名，方便整理。
+-   **📥 Powerful Export Features**:
+    -   **Raw JSON Export**: Complete backup of all data returned by the official API, including detailed metadata and attachment information for each message.
+    -   **Custom JSON Export**: Provides highly flexible export options, allowing you to finely control the data to be retained, for example:
+        -   Whether to include session metadata (title, summary, timestamps, etc.).
+        -   Whether to include message UUIDs, timestamps, stop reasons, etc.
+        -   Whether to retain "thinking" processes, tool usage records (web search, code execution, etc.).
+        -   The level of attachment information to retain (full info, metadata only, none).
+    -   **Download Attachments Alongside**: When performing a raw export or choosing to retain attachments in a custom export, the script will automatically download all attachments (PDF, TXT, CSV, etc.) from the conversation into the same folder, intelligently named according to their source and UUID for easy organization.
 
--   **🌳 单个对话操作**:
-    -   **手动重命名**: 直接在管理器中修改任何对话的标题。
-    -   **对话树预览**: 以树状结构清晰地展示对话的所有分支，包括每一次重试（Retry）产生的分支，方便您理解对话的完整脉络。支持自动检测并标识"脏数据"（因网络错误等原因未收到 Claude 回复的用户消息节点）。
+-   **🌳 Single Conversation Operations**:
+    -   **Manual Rename**: Directly edit the title of any conversation within the manager.
+    -   **Conversation Tree Preview**: Clearly displays all branches of a conversation in a tree structure, including branches created by each "Retry," helping you understand the full context of the conversation. Supports automatic detection and flagging of "dirty data" (user message nodes that did not receive a reply from Claude due to network errors, etc.).
 
-### 2. 聊天增强器 (Enhancer)
+### 2. Chat Enhancer
 
-此模块直接在 Claude 的聊天输入框工具栏注入新的功能按钮，实时增强您的聊天体验。
+This module injects new function buttons directly into the chat input toolbar in Claude, enhancing your chat experience in real-time.
 
--   **🌿 智能对话树延续&导航器 (Branch Continuer & Navigator)**:
-    -   点击工具栏新增的 <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-tree.svg" alt="树状图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮，开启强大的对话树管理面板。
-    -   **双模式操作**:
-        - **延续模式**: 选择历史上任意一条Claude回复作为新分支点，下一条消息将从该节点继续，完美实现从任意历史点"复活"对话。
-        - **导航模式**: 在复杂的多分支对话中快速跳转到任意历史节点。
-    -   **核心特性**: 
-        - 可视化对话树结构，清晰展示所有分支和节点关系
-        - 支持递归搜索整个对话树，快速定位目标内容
-        - 智能索引系统和分支切换算法确保在复杂分支中的精确导航
+-   **🌿 Smart Branch Continuer & Navigator**:
+    -   Click the new <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-tree.svg" alt="Tree Icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"> icon button in the toolbar to open the powerful conversation tree management panel.
+    -   **Dual-Mode Operation**:
+        - **Continue Mode**: Select any historical Claude reply as a new branch point. Your next message will continue from that node, perfectly "reviving" the conversation from any historical point.
+        - **Navigate Mode**: Quickly jump to any historical node in a complex, multi-branched conversation.
+    -   **Core Features**:
+        - Visualizes the conversation tree structure, clearly showing all branches and node relationships.
+        - Supports recursive search of the entire conversation tree to quickly locate target content.
+        - An intelligent indexing system and branch-switching algorithm ensure precise navigation in complex branches.
 
--   **🚀 强制 PDF 深度解析 (Force PDF Deep Analysis)**:
-    -   点击工具栏新增的 <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-attachment-power.svg" alt="附件增强图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮，可以开启此模式。
-    -   **主要用途**: 对于普通（免费）账户，此功能可以强制 Claude 使用更强大的文档解析路径来处理 PDF 文件，从而获得与 Pro/Team 账户类似的深度解析和内容提取效果。
-    -   **工作原理**: 开启后，您上传的 PDF 会被脚本拦截，并通过一个特殊的后台 API 路径进行处理。处理完成的文件会暂存在一个浮动面板中，当您发送消息时，这些文件会自动附加到您的消息中。
-    -   **注意**: 此功能对 Pro/Team 账户无效，因为它们默认已使用最佳解析路径。
+-   **🚀 Force PDF Deep Analysis**:
+    -   Click the new <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-attachment-power.svg" alt="Attachment Power Icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"> icon button in the toolbar to enable this mode.
+    -   **Main Purpose**: For regular (free) accounts, this feature forces Claude to use a more powerful document processing path for PDF files, achieving deep analysis and content extraction effects similar to Pro/Team accounts.
+    -   **How It Works**: When enabled, your uploaded PDFs are intercepted by the script and processed through a special backend API path. The processed files are temporarily stored in a floating panel and are automatically attached to your message when you send it.
+    -   **Note**: This feature has no effect on Pro/Team accounts, as they already use the optimal processing path by default.
 
--   **🧭 线性对话导航面板 (Linear Navigation Panel)**:
-    -   点击工具栏新增的 <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-linear-navigator.svg" alt="线性导航图标" width="16" height="16" style="display: inline-block; vertical-align: middle;"> 图标按钮，开启浮动的线性导航面板。
-    -   **核心功能**:
-        - **对话概览**: 以线性列表形式展示当前分支的所有对话回合，显示用户输入和Claude回复的预览。
-        - **快速跳转**: 点击列表中任一条目即可快速滚动到对应的对话内容，支持高亮动画效果。
-        - **导航控制**: 提供上一条/下一条、回到顶部/底部等快捷导航按钮。
-        - **状态持久**: 面板的开启/关闭状态会自动保存，下次访问时恢复。
-        - **拖拽移动**: 面板支持拖拽到屏幕任意位置，适应不同的使用习惯。
-    -   **适用场景**: 特别适合处理长对话时快速定位和回顾历史内容，提升对话导航效率。
-
----
-
-## 🛠️ 安装
-
-1.  **安装脚本管理器**: 您的浏览器需要先安装一个用户脚本管理器。推荐使用 [Tampermonkey](https://www.tampermonkey.net/)。
-2.  **安装本脚本**: 点击下面的链接进行安装：
-    -   [Greasy Fork 安装页](https://greasyfork.org/zh-CN/scripts/539886-claudepowerestmanager-enhancer)
+-   **🧭 Linear Navigation Panel**:
+    -   Click the new <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-linear-navigator.svg" alt="Linear Navigator Icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"> icon button in the toolbar to open the floating linear navigation panel.
+    -   **Core Functions**:
+        - **Conversation Overview**: Displays all conversation turns in the current branch as a linear list, showing previews of user inputs and Claude's replies.
+        - **Quick Jump**: Click any item in the list to quickly scroll to the corresponding conversation content, with a highlight animation effect.
+        - **Navigation Controls**: Provides quick navigation buttons like Previous/Next, and To Top/To Bottom.
+        - **State Persistence**: The panel's open/closed state is automatically saved and restored on your next visit.
+        - **Draggable**: The panel can be dragged to any position on the screen to suit different user habits.
+    -   **Use Case**: Especially useful for quickly locating and reviewing historical content in long conversations, improving navigation efficiency.
 
 ---
 
-## 📖 使用方法
+## 🛠️ Installation
 
--   **打开管理器**:
-    -   访问 [https://claude.ai](https://claude.ai)
-    -   或者访问 [https://demo.fuclaude.com](https://demo.fuclaude.com)
-    -   在页面右下角找到并点击橙色的 **`Manager`** 按钮。
-
--   **使用增强功能**:
-    -   进入任意一个聊天界面。
-    -   在底部的聊天输入框工具栏（附件上传按钮旁边），您会看到新增的图标按钮，点击即可使用相应功能。
-
--   **快捷键**:
-    -   **Ctrl+M**: 快速隐藏/显示右下角的 Manager 按钮。在需要更纯净的界面时使用，再次按下即可恢复显示。
-
+1.  **Install a Script Manager**: Your browser needs a user script manager first. [Tampermonkey](https://www.tampermonkey.net/) is recommended.
+2.  **Install This Script**: Click the link below to install:
+    -   [Greasy Fork Installation Page](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
 
 ---
 
-## ⚠️ 注意事项
+## 📖 Usage
 
--   本脚本通过与 Claude 的前端和非公开 API 交互来实现功能。如果 Claude.ai
- 网站结构或 API 发生重大变化，可能导致脚本部分或全部功能失效。作者会尽力维护，但也请理解潜在的风险。
--   “批量删除”是永久性操作，无法撤销，请谨慎使用。
--   “强制PDF深度解析”功能主要为普通账户设计，以提升体验。
+-   **Open the Manager**:
+    -   Visit [https://claude.ai](https://claude.ai)
+    -   Find and click the orange **`Manager`** button in the bottom-right corner of the page.
+
+-   **Use Enhancer Features**:
+    -   Enter any chat interface.
+    -   In the chat input toolbar at the bottom (next to the attachment upload button), you will see the new icon buttons. Click them to use the corresponding features.
+
+-   **Language Switching**:
+    -   Install the script, then on the Claude page click the Manager button in the bottom-right corner.
+    -   In the Manager panel, click the <img src="https://raw.githubusercontent.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/refs/heads/main/assets/icon-settings.svg" alt="Tree Icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"> button in the top-right corner to open the settings panel.
+    -   In the "语言设置" section, switch the "界面语言", then click "保存设置" at the bottom of the panel.
+    -   Wait for the page to automatically refresh to complete the language switch.
+
+-   **Shortcut**:
+    -   **Ctrl+M**: Quickly hide/show the Manager button in the bottom-right corner. Use this when you need a cleaner interface; press it again to restore.
 
 ---
 
-## 🤝 致谢与相关项目
+## ⚠️ Important Notes
 
--   **本项目**: [f14XuanLv/Claude-Powerest-Manager_Enhancer](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer)
--   **下一个项目预告**: [f14XuanLv/claude-dialog-tree-studio](https://github.com/f14XuanLv/claude-dialog-tree-studio) - 一个专注于 Claude 对话树的智能可视化编辑与管理工具，敬请期待！
-
-如果您觉得这个脚本对您有帮助，欢迎在 GitHub 上给一个 🌟 Star！如果您有任何问题或建议，请通过 [Issues](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/issues) 页面提出。
+-   This script works by interacting with Claude's front-end and private APIs. If the structure of the Claude.ai website or its APIs changes significantly, it may cause some or all of the script's features to break. The author will do their best to maintain it, but please understand the potential risks.
+-   "Bulk Delete" is a permanent action and cannot be undone. Please use it with caution.
+-   The "Force PDF Deep Analysis" feature is primarily designed for regular accounts to enhance their experience.
 
 ---
 
-## 📄 许可 (License)
+## 🤝 Acknowledgments & Related Projects
 
-本项目基于 [MIT License](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE) 授权。
+-   **This Project**: [f14XuanLv/Claude-Powerest-Manager_Enhancer](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer)
+-   **Next Project Preview**: [f14XuanLv/claude-dialog-tree-studio](https://github.com/f14XuanLv/claude-dialog-tree-studio) - An intelligent visual editing and management tool focused on Claude conversation trees. Stay tuned!
+
+If you find this script helpful, please give it a 🌟 Star on GitHub! If you have any questions or suggestions, please submit them via the [Issues](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/issues) page.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE).
