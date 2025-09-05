@@ -594,6 +594,9 @@
         TOOLBAR_SELECTOR: 'div.relative.flex-1.flex.items-center.gap-2.shrink.min-w-0',
         EMPTY_AREA_SELECTOR: 'div.flex.flex-row.items-center.gap-2.min-w-0',
         FORCE_UPLOAD_TARGET_EXTENSIONS: [".pdf"],
+        SpecialContent: [".doc", ".pptx", ".zip"],
+        PdfHandler: [".pdf"],
+        OutOfContentFileHandler: [".csv", ".xls", ".xlsx", ".xlsb", ".xlm", ".xlsm", ".xlt", ".xltm", ".xltx", ".ods", ".zip"],
         ContentExtractorHandler: [".docx", ".rtf", ".epub", ".odt", ".odp"],
         ATTACHMENT_PANEL_ID: 'cpm-attachment-preview-panel',
         EXPORT_MODAL_ID: 'cpm-export-modal',
@@ -2101,8 +2104,13 @@
                         // 统一使用第一个点分割的结果构造文件名
                         fileName = `${baseNameForRestore}_[${file.id || 'no-id'}]${extensionForRestore}`;
                         
-                        // 对于 ContentExtractorHandler 中的文件类型，添加.txt后缀
-                        if (extensionForCheck && Config.ContentExtractorHandler.includes(extensionForCheck.toLowerCase())) {
+                        // 对于以下列表中的文件类型，添加.txt后缀
+                        if (extensionForCheck && (
+                            Config.ContentExtractorHandler.includes(extensionForCheck.toLowerCase()) ||
+                            Config.SpecialContent.includes(extensionForCheck.toLowerCase()) ||
+                            Config.PdfHandler.includes(extensionForCheck.toLowerCase()) ||
+                            Config.OutOfContentFileHandler.includes(extensionForCheck.toLowerCase())
+                        )) {
                             fileName += '.txt';
                         }
                     } else if (file.type === 'binary' && file.file_uuid) {
