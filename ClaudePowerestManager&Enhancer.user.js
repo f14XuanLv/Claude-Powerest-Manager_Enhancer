@@ -67,7 +67,7 @@
                 'manager.noResults': '没有符合条件的会话。',
                 'manager.ready': '准备就绪。',
                 'manager.refreshButtonTip': '点击刷新按钮 ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) 加载会话列表。',
-                
+
                 // Settings 相关
                 'settings.title': '管理器设置',
                 'settings.theme': '外观设置',
@@ -82,7 +82,7 @@
                 'settings.backToMain': '返回主面板',
                 'settings.language': '语言设置',
                 'settings.interfaceLanguage': '界面语言:',
-                
+
                 // Navigator 相关
                 'navigator.title': '对话节点延续&导航器',
                 'navigator.branchMode': '延续模式',
@@ -90,7 +90,7 @@
                 'navigator.branchSelected': '分支点已选定',
                 'navigator.loading': '正在加载对话历史...',
                 'navigator.branchFromRoot': '从根节点开始 (创建一个新的主分支)',
-                
+
                 // Linear Navigator 相关
                 'linear.title': '线性导航',
                 'linear.refresh': '刷新对话列表',
@@ -100,12 +100,12 @@
                 'linear.prev': '上一条',
                 'linear.next': '下一条',
                 'linear.empty': '暂无线性对话',
-                
+
                 // Attachment 相关
                 'attachment.title': 'PDF深度解析暂存区',
                 'attachment.forceMode': 'Force PDF Deep Analysis',
                 'attachment.close': '关闭并清空所有暂存文件',
-                
+
                 // Export 相关
                 'export.original': '原始JSON导出',
                 'export.custom': '自定义JSON导出',
@@ -113,13 +113,13 @@
                 'export.batchCustom': '批量自定义JSON导出',
                 'export.selectFolder': '正在请求文件夹权限...',
                 'export.complete': '导出完成！',
-                
+
                 // Tree view 相关
                 'tree.preview': '对话树预览',
                 'tree.loading': '正在加载对话树...',
                 'tree.empty': '这是一个空对话',
                 'tree.emptyForBranching': '，无法选择节点',
-                
+
                 // Common 相关
                 'common.confirm': '确定',
                 'common.cancel': '取消',
@@ -129,7 +129,7 @@
                 'common.error': '错误',
                 'common.success': '成功',
                 'common.failed': '失败',
-                
+
                 // Sorting & Filtering
                 'sort.updatedDesc': '时间降序',
                 'sort.updatedAsc': '时间升序',
@@ -140,7 +140,7 @@
                 'filter.unstarred': '隐藏收藏',
                 'filter.asciiOnly': '仅显示纯ASCII标题',
                 'filter.nonAscii': '不显示纯ASCII标题',
-                
+
                 // Button tooltips
                 'tooltip.managerButton': 'Tips: Ctrl + M 可以隐藏此按钮',
                 'tooltip.navigatorButton': '从对话历史的任意节点延续&导航至任意节点',
@@ -151,12 +151,12 @@
                 'tooltip.githubLink': '查看 GitHub 仓库',
                 'tooltip.studioLink': '了解下一个项目: claude-dialog-tree-studio',
                 'pdf.forceModeText': 'Force PDF Deep Analysis',
-                
+
                 // Toolbar labels
                 'toolbar.sort': '排序:',
                 'toolbar.filter': '筛选:',
                 'toolbar.searchPlaceholder': '搜索标题...',
-                
+
                 // Batch operations detailed settings
                 'batchOps.starUnstar': '批量收藏/取消收藏',
                 'batchOps.refreshAfterStar': '操作后从服务器刷新列表 (否则仅更新当前视图)',
@@ -167,7 +167,7 @@
                 'batchOps.titleLanguagePlaceholder': '例如：中文, English, 日本語',
                 'batchOps.maxRounds': '使用对话轮数 (最多):',
                 'batchOps.refreshAfterRename': '操作后从服务器刷新列表 (否则仅更新当前视图)',
-                
+
                 // Export settings
                 'exportSettings.customOptions': '自定义导出选项',
                 'exportSettings.batchCustomOptions': '批量自定义导出选项',
@@ -201,20 +201,20 @@
                 'exportSettings.artifactCreation': '工件创建 (artifacts)',
                 'exportSettings.otherTools': '其他未知工具',
                 'exportSettings.successfulOnly': '仅保留成功的工具调用',
-                
+
                 // Export status messages
                 'exportStatus.customComplete': '自定义导出完成！',
                 'exportStatus.customFailed': '自定义导出失败',
                 'exportStatus.batchPreparing': '准备批量自定义导出',
                 'exportStatus.batchComplete': '批量自定义导出完成',
                 'exportStatus.sessions': '个会话',
-                
+
                 // Action button tooltips
                 'action.manualRename': '手动重命名',
                 'action.previewTree': '预览对话树',
                 'action.originalExport': '原始JSON导出',
                 'action.customExport': '自定义JSON导出',
-                
+
                 // Status messages
                 'status.savingTitle': '正在保存新标题...',
                 'status.saveSuccess': '保存成功！',
@@ -222,16 +222,16 @@
                 'status.loadedSessions': '已加载',
                 'status.loadSessionsFailed': '加载会话失败',
                 'status.loadFailed': '加载失败',
-                
+
                 // Error messages
                 'error.cannotLoadTree': '无法加载对话树',
-                
+
                 // Tree view related
                 'treeView.prefix': '对话树: ',
                 'treeView.untitled': '无标题',
                 'treeView.loading': '加载中...',
                 'treeView.loadFailed': '无法加载对话树',
-                
+
                 // Additional status and error messages
                 'error.invalidTitle': '生成了无效标题。',
                 'error.loadSessionsFailed': '加载会话失败',
@@ -263,7 +263,7 @@
                 'status.checkingFile': '检查文件 {0} 出错',
                 'status.writingFile': '正在写入 {0}...',
                 'status.convertingData': '正在根据设置转换数据...',
-                
+
                 // Export related messages
                 'export.foundAttachments': '发现 {0} 个附件，开始下载...',
                 'export.cannotGetOrgInfo': '无法获取组织信息以下载附件。',
@@ -282,7 +282,7 @@
                 'export.exportFailed': '导出失败 ({0}/{1}): {2}',
                 'export.exportingProgress': '({0}/{1}) 正在导出: {2}',
                 'export.sessionFailed': '导出会话 {0} 失败',
-                
+
                 // API error messages
                 'api.orgRequestFailed': '组织API请求失败: {0}',
                 'api.orgInfoNotFound': '在API响应中未找到组织信息。',
@@ -292,7 +292,7 @@
                 'api.titleGenerationFailed': '标题生成API请求失败。',
                 'api.updateSessionFailed': '更新会话失败: {0}',
                 'api.fileDownloadFailed': '文件下载失败: {0} at {1}',
-                
+
                 // Tree view and content messages
                 'tree.attachmentOrToolOnly': '[仅包含附件或工具使用]',
                 'tree.attachments': '附件',
@@ -301,14 +301,14 @@
                 'error.noValidTextContent': '在指定轮次内未找到有效文本内容。',
                 'error.insufficientRounds': '对话轮次不足(可能为空对话)，跳过重命名。',
                 'error.cannotGetConvoData': '无法获取对话数据',
-                
+
                 // Operation names
                 'operation.rename': '重命名',
                 'operation.delete': '删除',
                 'operation.star': '收藏',
                 'operation.unstar': '取消收藏'
             },
-            
+
             en: {
                 // Manager related
                 'manager.title': 'Manager',
@@ -324,7 +324,7 @@
                 'manager.noResults': 'No conversations match the criteria.',
                 'manager.ready': 'Ready.',
                 'manager.refreshButtonTip': 'Click refresh button ( <svg class="cpm-svg-icon"><use href="#cpm-icon-refresh"></use></svg> ) to load conversation list.',
-                
+
                 // Settings related
                 'settings.title': 'Manager Settings',
                 'settings.theme': 'Appearance Settings',
@@ -339,7 +339,7 @@
                 'settings.backToMain': 'Back to Main Panel',
                 'settings.language': 'Language Settings',
                 'settings.interfaceLanguage': 'Interface Language:',
-                
+
                 // Navigator related
                 'navigator.title': 'Dialog Node Continuation & Navigator',
                 'navigator.branchMode': 'Branch Mode',
@@ -347,7 +347,7 @@
                 'navigator.branchSelected': 'Branch point selected',
                 'navigator.loading': 'Loading conversation history...',
                 'navigator.branchFromRoot': 'Start from root node (create a new main branch)',
-                
+
                 // Linear Navigator related
                 'linear.title': 'Linear Navigation',
                 'linear.refresh': 'Refresh Dialog List',
@@ -357,12 +357,12 @@
                 'linear.prev': 'Previous',
                 'linear.next': 'Next',
                 'linear.empty': 'No linear dialogs',
-                
+
                 // Attachment related
                 'attachment.title': 'PDF Deep Analysis Staging Area',
                 'attachment.forceMode': 'Force PDF Deep Analysis',
                 'attachment.close': 'Close and clear all staged files',
-                
+
                 // Export related
                 'export.original': 'Original JSON Export',
                 'export.custom': 'Custom JSON Export',
@@ -370,13 +370,13 @@
                 'export.batchCustom': 'Batch Custom JSON Export',
                 'export.selectFolder': 'Requesting folder permission...',
                 'export.complete': 'Export completed!',
-                
+
                 // Tree view related
                 'tree.preview': 'Dialog Tree Preview',
                 'tree.loading': 'Loading dialog tree...',
                 'tree.empty': 'This is an empty conversation',
                 'tree.emptyForBranching': ', cannot select nodes',
-                
+
                 // Common related
                 'common.confirm': 'Confirm',
                 'common.cancel': 'Cancel',
@@ -386,7 +386,7 @@
                 'common.error': 'Error',
                 'common.success': 'Success',
                 'common.failed': 'Failed',
-                
+
                 // Sorting & Filtering
                 'sort.updatedDesc': 'Time Desc',
                 'sort.updatedAsc': 'Time Asc',
@@ -397,7 +397,7 @@
                 'filter.unstarred': 'Hide Starred',
                 'filter.asciiOnly': 'ASCII Titles Only',
                 'filter.nonAscii': 'Non-ASCII Titles Only',
-                
+
                 // Button tooltips
                 'tooltip.managerButton': 'Tips: Ctrl + M to hide this button',
                 'tooltip.navigatorButton': 'Branch from any message node & navigate to any node',
@@ -408,12 +408,12 @@
                 'tooltip.githubLink': 'View GitHub Repository',
                 'tooltip.studioLink': 'Learn about next project: claude-dialog-tree-studio',
                 'pdf.forceModeText': 'Force PDF Deep Analysis',
-                
+
                 // Toolbar labels
                 'toolbar.sort': 'Sort:',
                 'toolbar.filter': 'Filter:',
                 'toolbar.searchPlaceholder': 'Search titles...',
-                
+
                 // Batch operations detailed settings
                 'batchOps.starUnstar': 'Batch Star/Unstar',
                 'batchOps.refreshAfterStar': 'Refresh list from server after operation (otherwise only update current view)',
@@ -424,7 +424,7 @@
                 'batchOps.titleLanguagePlaceholder': 'e.g.: 中文, English, 日本語',
                 'batchOps.maxRounds': 'Max Conversation Rounds:',
                 'batchOps.refreshAfterRename': 'Refresh list from server after operation (otherwise only update current view)',
-                
+
                 // Export settings
                 'exportSettings.customOptions': 'Custom Export Options',
                 'exportSettings.batchCustomOptions': 'Batch Custom Export Options',
@@ -458,20 +458,20 @@
                 'exportSettings.artifactCreation': 'Artifact creation (artifacts)',
                 'exportSettings.otherTools': 'Other unknown tools',
                 'exportSettings.successfulOnly': 'Keep only successful tool calls',
-                
+
                 // Export status messages
                 'exportStatus.customComplete': 'Custom export completed!',
                 'exportStatus.customFailed': 'Custom export failed',
                 'exportStatus.batchPreparing': 'Preparing batch custom export',
                 'exportStatus.batchComplete': 'Batch custom export completed',
                 'exportStatus.sessions': 'sessions',
-                
+
                 // Action button tooltips
                 'action.manualRename': 'Manual Rename',
                 'action.previewTree': 'Preview Dialog Tree',
                 'action.originalExport': 'Original JSON Export',
                 'action.customExport': 'Custom JSON Export',
-                
+
                 // Status messages
                 'status.savingTitle': 'Saving new title...',
                 'status.saveSuccess': 'Saved successfully!',
@@ -479,16 +479,16 @@
                 'status.loadedSessions': 'Loaded',
                 'status.loadSessionsFailed': 'Failed to load conversations',
                 'status.loadFailed': 'Load failed',
-                
+
                 // Error messages
                 'error.cannotLoadTree': 'Cannot load conversation tree',
-                
+
                 // Tree view related
                 'treeView.prefix': 'Dialog Tree: ',
                 'treeView.untitled': 'Untitled',
                 'treeView.loading': 'Loading...',
                 'treeView.loadFailed': 'Failed to load dialog tree',
-                
+
                 // Additional status and error messages
                 'error.invalidTitle': 'Generated invalid title.',
                 'error.loadSessionsFailed': 'Failed to load sessions',
@@ -520,7 +520,7 @@
                 'status.checkingFile': 'Error checking file {0}',
                 'status.writingFile': 'Writing {0}...',
                 'status.convertingData': 'Converting data according to settings...',
-                
+
                 // Export related messages
                 'export.foundAttachments': 'Found {0} attachments, starting download...',
                 'export.cannotGetOrgInfo': 'Cannot get organization info for downloading attachments.',
@@ -539,7 +539,7 @@
                 'export.exportFailed': 'Export failed ({0}/{1}): {2}',
                 'export.exportingProgress': '({0}/{1}) Exporting: {2}',
                 'export.sessionFailed': 'Failed to export session {0}',
-                
+
                 // API error messages
                 'api.orgRequestFailed': 'Organization API request failed: {0}',
                 'api.orgInfoNotFound': 'Organization info not found in API response.',
@@ -549,7 +549,7 @@
                 'api.titleGenerationFailed': 'Title generation API request failed.',
                 'api.updateSessionFailed': 'Failed to update session: {0}',
                 'api.fileDownloadFailed': 'File download failed: {0} at {1}',
-                
+
                 // Tree view and content messages
                 'tree.attachmentOrToolOnly': '[Contains only attachments or tool usage]',
                 'tree.attachments': 'Attachments',
@@ -558,10 +558,10 @@
                 'error.noValidTextContent': 'No valid text content found within specified rounds.',
                 'error.insufficientRounds': 'Insufficient conversation rounds (possibly empty conversation), skipping rename.',
                 'error.cannotGetConvoData': 'Cannot get conversation data',
-                
+
                 // Operation names
                 'operation.rename': 'rename',
-                'operation.delete': 'delete', 
+                'operation.delete': 'delete',
                 'operation.star': 'star',
                 'operation.unstar': 'unstar'
             }
@@ -573,14 +573,14 @@
         const lang = I18N_CONFIG.currentLang;
         const translations = I18N_CONFIG.translations[lang];
         let text = translations && translations[key] ? translations[key] : (fallback || key);
-        
+
         // 支持参数替换 {0}, {1}, {2}...
         if (params.length > 0) {
             for (let i = 0; i < params.length; i++) {
                 text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), params[i]);
             }
         }
-        
+
         return text;
     }
 
@@ -594,6 +594,7 @@
         TOOLBAR_SELECTOR: 'div.relative.flex-1.flex.items-center.gap-2.shrink.min-w-0',
         EMPTY_AREA_SELECTOR: 'div.flex.flex-row.items-center.gap-2.min-w-0',
         FORCE_UPLOAD_TARGET_EXTENSIONS: [".pdf"],
+        ContentExtractorHandler: [".docx", ".rtf", ".epub", ".odt", ".odp"],
         ATTACHMENT_PANEL_ID: 'cpm-attachment-preview-panel',
         EXPORT_MODAL_ID: 'cpm-export-modal',
         URL_GITHUB_REPO: 'https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer',
@@ -2069,13 +2070,37 @@
                 for (let i = 0; i < allAttachments.length; i++) {
                     const file = allAttachments[i];
                     let fileName;
-                    const baseName = file.file_name ? (file.file_name.includes('.') ? file.file_name.substring(0, file.file_name.lastIndexOf('.')) : file.file_name) : 'unknown_file';
-                    const extension = file.file_name ? (file.file_name.includes('.') ? file.file_name.substring(file.file_name.lastIndexOf('.')) : '') : '';
+                    
+                    // 双分割策略处理文件名
+                    let extensionForCheck; // 用于检查的部分 (最后一个点)
+                    let baseNameForRestore, extensionForRestore; // 用于还原的部分 (第一个点)
+                    
+                    if (file.file_name && file.file_name.includes('.')) {
+                        // 按最后一个点分割 - 用于检查扩展名类型
+                        const lastDotIndex = file.file_name.lastIndexOf('.');
+                        extensionForCheck = file.file_name.substring(lastDotIndex);
+                        
+                        // 按第一个点分割 - 用于还原完整扩展名
+                        const firstDotIndex = file.file_name.indexOf('.');
+                        baseNameForRestore = file.file_name.substring(0, firstDotIndex);
+                        extensionForRestore = file.file_name.substring(firstDotIndex);
+                    } else {
+                        // 没有扩展名的情况
+                        baseNameForRestore = file.file_name || 'unknown_file';
+                        extensionForCheck = extensionForRestore = '';
+                    }
 
                     if (file.type === 'text') {
-                        fileName = `${baseName}_[${file.id || 'no-id'}].txt`;
+                        // 统一使用第一个点分割的结果构造文件名
+                        fileName = `${baseNameForRestore}_[${file.id || 'no-id'}]${extensionForRestore}`;
+                        
+                        // 对于 ContentExtractorHandler 中的文件类型，添加.txt后缀
+                        if (extensionForCheck && Config.ContentExtractorHandler.includes(extensionForCheck.toLowerCase())) {
+                            fileName += '.txt';
+                        }
                     } else if (file.type === 'binary' && file.file_uuid) {
-                        fileName = `${baseName}_[${file.file_uuid}]${extension}`;
+                        // 二进制文件使用第一个点分割的结果，保留完整扩展名
+                        fileName = `${baseNameForRestore}_[${file.file_uuid}]${extensionForRestore}`;
                     }
 
                     if (!fileName) continue;
@@ -3873,7 +3898,7 @@
 
                 // 执行原始请求
                 const response = originalFetch.apply(this, args);
-                
+
                 // 拦截 /completion 和 /retry_completion 的响应
                 if (url.includes('/completion') || url.includes('/retry_completion')) {
                     return response.then(async (originalResponse) => {
@@ -3881,7 +3906,7 @@
                             // 检查响应是否成功
                             if (originalResponse.ok) {
                                 console.log(`%c${LOG_PREFIX} 响应拦截: ${url.includes('/retry_completion') ? '/retry_completion' : '/completion'} 请求成功完成`, 'color: #10b981; font-weight: bold;');
-                                
+
                                 // 延迟清除对话树缓存，确保服务器端数据已更新完成
                                 setTimeout(() => {
                                     ClaudeAPI.isInitialized = false;
@@ -3893,14 +3918,14 @@
                         } catch (error) {
                             console.warn(`${LOG_PREFIX} 响应处理时出错:`, error);
                         }
-                        
+
                         return originalResponse;
                     }).catch((error) => {
                         console.error(`${LOG_PREFIX} 请求失败:`, error);
                         throw error;
                     });
                 }
-                
+
                 return response;
             };
         },
