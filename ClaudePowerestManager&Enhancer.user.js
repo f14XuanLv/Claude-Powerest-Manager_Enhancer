@@ -2,7 +2,7 @@
 // @name         ClaudePowerestManager&Enhancer
 // @name:zh-CN   Claude神级拓展增强脚本
 // @namespace    http://tampermonkey.net/
-// @version      1.2.2
+// @version      1.2.3
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.2]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.3]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -886,17 +886,20 @@
             if (!response.ok) throw new Error(t('api.getHistoryFailed', 'api.getHistoryFailed', response.status));
             const data = await response.json();
 
-            // 标记脏数据：标记没有 Claude 回复的孤儿用户节点
-            data.chat_messages = this.markDirtyMessages(data.chat_messages);
+            // 标记脏数据：标记没有 Claude 回复的孤儿用户节点 (在副本上操作)
+            const processedMessages = this.markDirtyMessages(data.chat_messages);
 
-            this.conversationTree = this.buildConversationTree(data.chat_messages);
+            this.conversationTree = this.buildConversationTree(processedMessages);
             this.updateCurrentLinearBranch();
-            return data;
+            return data; // 返回原始数据，保持不变
         },
 
         markDirtyMessages(messages) {
+            // 创建消息的深度副本，避免修改原始数据
+            const messagesCopy = messages.map(msg => JSON.parse(JSON.stringify(msg)));
+            
             // 按 index 排序消息以确保正确的时间顺序
-            const sortedMessages = [...messages].sort((a, b) => a.index - b.index);
+            const sortedMessages = [...messagesCopy].sort((a, b) => a.index - b.index);
             let dirtyCount = 0;
 
             console.log(`${LOG_PREFIX} 开始标记脏数据，原始消息数量: ${messages.length}`);
@@ -911,7 +914,7 @@
                     // 如果没有下一个消息，或者下一个消息也是用户消息，说明是孤儿用户节点
                     if (!nextMessage || nextMessage.sender === 'human') {
                         console.log(`${LOG_PREFIX} 发现孤儿用户节点: ${currentMessage.uuid.slice(-8)}, index: ${currentMessage.index}, 内容: "${currentMessage.content?.[0]?.text?.slice(0, 50) || '空内容'}..."`);
-                        // 标记为脏数据而不是删除
+                        // 在副本上标记为脏数据
                         currentMessage._isDirtyData = true;
                         dirtyCount++;
                     }
@@ -919,16 +922,19 @@
             }
 
             if (dirtyCount > 0) {
-                console.log(`${LOG_PREFIX} 标记完成，标记了 ${dirtyCount} 个孤儿用户节点为脏数据，总消息数量: ${messages.length}`);
+                console.log(`${LOG_PREFIX} 标记完成，标记了 ${dirtyCount} 个孤儿用户节点为脏数据，总消息数量: ${messagesCopy.length}`);
             }
 
-            return messages; // 返回包含脏数据标记的完整消息列表
+            return messagesCopy; // 返回包含脏数据标记的副本消息列表
         },
 
 
         buildConversationTree(messages) {
-            const nodes = {};
-            messages.forEach(msg => { nodes[msg.uuid] = msg; });
+            // 创建消息的深度副本，避免修改原始数据
+            const nodesCopy = {};
+            messages.forEach(msg => { 
+                nodesCopy[msg.uuid] = JSON.parse(JSON.stringify(msg)); 
+            });
 
             const childrenMap = {};
             messages.forEach(msg => {
@@ -938,12 +944,13 @@
             });
 
             for (const parentUuid in childrenMap) {
-                childrenMap[parentUuid].sort((a, b) => new Date(nodes[a].created_at) - new Date(nodes[b].created_at));
+                childrenMap[parentUuid].sort((a, b) => new Date(nodesCopy[a].created_at) - new Date(nodesCopy[b].created_at));
             }
 
             function assignIdsRecursive(nodeUuid, prefix) {
-                if (!nodes[nodeUuid]) return;
-                const node = nodes[nodeUuid];
+                if (!nodesCopy[nodeUuid]) return;
+                const node = nodesCopy[nodeUuid];
+                // 在副本上添加 tree_id
                 node.tree_id = prefix;
 
                 const children = childrenMap[nodeUuid] || [];
@@ -951,7 +958,7 @@
                 let dirtyCount = 1;
 
                 children.forEach((childUuid) => {
-                    const childNode = nodes[childUuid];
+                    const childNode = nodesCopy[childUuid];
                     if (!childNode) return;
 
                     // 检测脏数据：标记了 _isDirtyData 的节点
@@ -972,7 +979,7 @@
                 assignIdsRecursive(rootUuid, `root-${index}`);
             });
 
-            return { nodes, childrenMap, rootNodes };
+            return { nodes: nodesCopy, childrenMap, rootNodes };
         },
         async createTempConversation() {
             const orgId = await this.getOrgUuid();

@@ -1,13 +1,13 @@
 # Claude Powerest Manager & Enhancer
 
-[![Version](https://img.shields.io/badge/Version-1.2.2-blue.svg)](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
+[![Version](https://img.shields.io/badge/Version-1.2.3-blue.svg)](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![Supported Site](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)
 [![Author](https://img.shields.io/badge/Author-f14xuanlv-purple.svg)](https://github.com/f14XuanLv)
 
 
-[**Read this document in Chinese**](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/README_zh.md)
+[**阅读中文文档**](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/README_zh.md)
 
 This is an extremely powerful Tampermonkey script designed to enhance your Claude experience in every way. It integrates two core modules: a comprehensive **Conversation Manager** and a real-time **Chat Enhancer**, giving you unprecedented control and convenience.
 
