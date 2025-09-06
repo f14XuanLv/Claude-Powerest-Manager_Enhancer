@@ -2722,7 +2722,9 @@
             treePanel.style.display = 'flex';
             try {
                 const historyData = await ClaudeAPI.getConversationHistory(uuid);
-                await SharedLogic.renderTreeView(treeContainer, historyData.chat_messages);
+                // 使用经过脏数据标记处理的消息数据
+                const processedMessages = ClaudeAPI.markDirtyMessages(historyData.chat_messages);
+                await SharedLogic.renderTreeView(treeContainer, processedMessages);
             } catch (error) {
                 console.error(error);
                 treeContainer.innerHTML = `<p class="cpm-error">${t('error.cannotLoadTree')}: ${error.message}</p>`;
