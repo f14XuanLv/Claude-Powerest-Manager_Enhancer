@@ -2407,18 +2407,46 @@
         statusTimeout: null,
         isInitialized: false,
         isManagerButtonVisible: true,
+        keydownHandler: null,
+        essentialElementIds: ['cpm-manager-button', 'cpm-main-panel', 'cpm-settings-panel', 'cpm-tree-panel'],
 
         init() {
-            if (this.isInitialized) return;
-            this.createUI();
-            this.bindEvents();
-            ClaudeAPI.getOrgUuid().catch(err => console.error(LOG_PREFIX, "预获取OrgId失败", err));
-            this.isInitialized = true;
-            console.log(LOG_PREFIX, "主管理器UI已初始化。");
+            const uiIntact = this.hasEssentialElements();
+
+            if (this.isInitialized && uiIntact) return;
+
+            if (this.isInitialized && !uiIntact) {
+                console.warn(LOG_PREFIX, "检测到管理器UI节点缺失，准备重新挂载。");
+                this.destroyUI();
+                this.isInitialized = false;
+            }
+
+            if (!this.isInitialized) {
+                this.createUI();
+                this.bindEvents();
+                ClaudeAPI.getOrgUuid().catch(err => console.error(LOG_PREFIX, "预获取OrgId失败", err));
+                this.isInitialized = true;
+                console.log(LOG_PREFIX, "主管理器UI已初始化。");
+            }
+        },
+
+        hasEssentialElements() {
+            return this.essentialElementIds.every(id => document.getElementById(id));
+        },
+
+        destroyUI() {
+            this.essentialElementIds.forEach(id => document.getElementById(id)?.remove());
+            document.querySelector('div[data-cpm="svg-defs"]')?.remove();
+            document.querySelectorAll('.cpm-modal-overlay').forEach(el => el.remove());
+            if (this.keydownHandler) {
+                document.removeEventListener('keydown', this.keydownHandler);
+                this.keydownHandler = null;
+            }
         },
 
         createUI() {
             const svgDefs = document.createElement('div');
+            svgDefs.dataset.cpm = 'svg-defs';
             svgDefs.style.display = 'none';
             svgDefs.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg">
@@ -2476,6 +2504,7 @@
             managerButton.id = 'cpm-manager-button';
             managerButton.innerHTML = t('manager.title');
             managerButton.title = t('tooltip.managerButton');
+            managerButton.style.display = this.isManagerButtonVisible ? 'block' : 'none';
             document.body.appendChild(managerButton);
 
             const mainPanel = document.createElement('div');
@@ -2555,13 +2584,16 @@
             document.getElementById('cpm-save-settings-button').onclick = () => this.saveSettings();
             document.getElementById('cpm-tree-close-button').onclick = () => this.hidePanel('cpm-tree-panel');
 
-            // 添加Ctrl+M键盘快捷键监听
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'm') {
-                    e.preventDefault();
-                    this.toggleManagerButtonVisibility();
-                }
-            });
+            if (!this.keydownHandler) {
+                // 添加Ctrl+M键盘快捷键监听
+                this.keydownHandler = (e) => {
+                    if (e.ctrlKey && e.key === 'm') {
+                        e.preventDefault();
+                        this.toggleManagerButtonVisibility();
+                    }
+                };
+                document.addEventListener('keydown', this.keydownHandler);
+            }
             document.querySelector('#cpm-main-panel .cpm-list-container').addEventListener('click', (e) => {
                 const li = e.target.closest('li');
                 if (!li) return;
@@ -3200,10 +3232,13 @@
         toggleManagerButtonVisibility() {
             this.isManagerButtonVisible = !this.isManagerButtonVisible;
             const managerButton = document.getElementById('cpm-manager-button');
-            if (managerButton) {
-                managerButton.style.display = this.isManagerButtonVisible ? 'block' : 'none';
-                console.log(LOG_PREFIX, `Manager按钮已${this.isManagerButtonVisible ? '显示' : '隐藏'} (Ctrl+M)`);
+            if (!managerButton) {
+                console.warn(LOG_PREFIX, "Manager按钮缺失，尝试重新挂载UI。");
+                this.init();
+                return;
             }
+            managerButton.style.display = this.isManagerButtonVisible ? 'block' : 'none';
+            console.log(LOG_PREFIX, `Manager按钮已${this.isManagerButtonVisible ? '显示' : '隐藏'} (Ctrl+M)`);
         }
     };
 
@@ -3964,14 +3999,22 @@
             // 检测对话切换
             ClaudeAPI.checkConversationChange();
 
-            if (currentUrl === this.lastUrl && document.getElementById('cpm-manager-button')) {
-                if(document.querySelector(Config.TOOLBAR_SELECTOR) && !document.getElementById('cpm-branch-btn')) {
+            const urlChanged = currentUrl !== this.lastUrl;
+            const uiMissing = !ManagerUI.hasEssentialElements();
+
+            if (!urlChanged && !uiMissing) {
+                if (document.querySelector(Config.TOOLBAR_SELECTOR) && !document.getElementById('cpm-branch-btn')) {
                     this.setupEnhancers(currentUrl);
                 }
                 return;
             }
-            this.lastUrl = currentUrl;
-            console.log(LOG_PREFIX, "URL变更或初次加载，执行页面设置。");
+
+            if (urlChanged) {
+                this.lastUrl = currentUrl;
+                console.log(LOG_PREFIX, "URL变更或初次加载，执行页面设置。");
+            } else {
+                console.log(LOG_PREFIX, "检测到脚本UI元素缺失，重新执行页面设置。");
+            }
 
             ManagerUI.init();
             this.setupEnhancers(currentUrl);
