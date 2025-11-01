@@ -1,6 +1,6 @@
 # Claude Powerest Manager & Enhancer
 
-[![Version](https://img.shields.io/badge/Version-1.2.3-blue.svg)](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
+[![Version](https://img.shields.io/badge/Version-1.2.4-blue.svg)](https://greasyfork.org/en/scripts/539886-claudepowerestmanager-enhancer)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/f14XuanLv/Claude-Powerest-Manager_Enhancer/blob/main/LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-yellow.svg)](https://www.tampermonkey.net/)
 [![Supported Site](https://img.shields.io/badge/Site-Claude.ai-orange.svg)](https://claude.ai)

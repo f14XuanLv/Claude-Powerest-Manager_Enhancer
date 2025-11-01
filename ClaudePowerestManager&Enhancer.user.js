@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         ClaudePowerestManager&Enhancer
-// @name:zh-CN   Claude神级拓展增强脚本
+// @name         Claude Powerest Manager Enhancer | 导航 导出 管理 跳转 分支 对话 管理器 导出器 export navigate jump branch helper
+// @name:zh-CN   Claude神级拓展增强脚本 | (管理 增强 导出 导航 跳转 分支 分叉 管理器 增强器 导出器 导航器 助手) | (manage enhance export navigate jump branch fork manager enhancer exporter navigator helper)
 // @namespace    http://tampermonkey.net/
-// @version      1.2.3
-// @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
+// @version      1.2.4
+// @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。关键词: 管理 增强 导出 导航 跳转 分支 分叉 管理器 增强器 导出器 导航器 助手 manage enhance export navigate jump branch fork manager enhancer exporter navigator helper
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
 // @author       f14xuanlv
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.3]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.4]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
