@@ -2,7 +2,7 @@
 // @name         Claude Powerest Manager Enhancer | 导航 导出 管理 跳转 分支 对话 管理器 导出器 export navigate jump branch helper
 // @name:zh-CN   Claude神级拓展增强脚本 | (管理 增强 导出 导航 跳转 分支 分叉 管理器 增强器 导出器 导航器 助手) | (manage enhance export navigate jump branch fork manager enhancer exporter navigator helper)
 // @namespace    http://tampermonkey.net/
-// @version      1.2.4
+// @version      1.2.5
 // @description  一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。关键词: 管理 增强 导出 导航 跳转 分支 分叉 管理器 增强器 导出器 导航器 助手 manage enhance export navigate jump branch fork manager enhancer exporter navigator helper
 // @description:zh-CN [管理器] 右下角打开管理器面板开启一站式搜索、筛选、批量管理所有对话。强大的JSON导出(原始/自定义/含附件)。[增强器]为聊天框注入新功能，如从任意消息分支、跨分支全局导航、强制PDF深度解析、浮动线性导航面板等。
 // @description:en [Manager] Opens a management panel in the bottom-right corner for one-stop searching, filtering, and batch management of all conversations. Powerful JSON export (raw/custom/with attachments). [Enhancer] Injects new features into the chat interface, such as branching from any message, cross-branch navigation, forced deep PDF parsing, floating linear navigation panel, and more.
@@ -22,7 +22,7 @@
 (function(window) {
     'use strict';
 
-    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.4]:"
+    const LOG_PREFIX = "[ClaudePowerestManager&Enhancer v1.2.5]:"
     console.log(LOG_PREFIX, "脚本已加载。");
 
 
@@ -591,8 +591,8 @@
     // =========================================================================
     const Config = {
         INITIAL_PARENT_UUID: "00000000-0000-4000-8000-000000000000",
-        TOOLBAR_SELECTOR: 'div.relative.flex-1.flex.items-center.gap-2.shrink.min-w-0',
-        EMPTY_AREA_SELECTOR: 'div.flex.flex-row.items-center.gap-2.min-w-0',
+        TOOLBAR_SELECTOR: 'div.relative.flex-1.flex.items-center.shrink.min-w-0',
+        EMPTY_AREA_SELECTOR: 'div.flex.flex-row.items-center.min-w-0',
         FORCE_UPLOAD_TARGET_EXTENSIONS: [".pdf"],
         SpecialContent: [".doc", ".pptx", ".zip"],
         PdfHandler: [".pdf"],
@@ -900,7 +900,7 @@
         markDirtyMessages(messages) {
             // 创建消息的深度副本，避免修改原始数据
             const messagesCopy = messages.map(msg => JSON.parse(JSON.stringify(msg)));
-            
+
             // 按 index 排序消息以确保正确的时间顺序
             const sortedMessages = [...messagesCopy].sort((a, b) => a.index - b.index);
             let dirtyCount = 0;
@@ -935,8 +935,8 @@
         buildConversationTree(messages) {
             // 创建消息的深度副本，避免修改原始数据
             const nodesCopy = {};
-            messages.forEach(msg => { 
-                nodesCopy[msg.uuid] = JSON.parse(JSON.stringify(msg)); 
+            messages.forEach(msg => {
+                nodesCopy[msg.uuid] = JSON.parse(JSON.stringify(msg));
             });
 
             const childrenMap = {};
@@ -1137,7 +1137,11 @@
 
         findNodeByPositionWithCachedInfo(turnElement, expectedParentUuid, siblingInfo) {
             // 基于位置信息和缓存的兄弟信息在对话树中找到精确的节点
-            const isUser = !!turnElement.querySelector('[data-testid="user-message"]');
+            const hasUserMessage = !!turnElement.querySelector('[data-testid="user-message"]');
+            const hasFileThumbnail = !!turnElement.querySelector('[data-testid="file-thumbnail"]');
+            const hasClaudeResponse = !!turnElement.querySelector('.font-claude-response');
+            // 用户节点：有用户消息，或者有文件但没有Claude响应
+            const isUser = hasUserMessage || (hasFileThumbnail && !hasClaudeResponse);
             const expectedSender = isUser ? 'human' : 'assistant';
             const { nodes, childrenMap } = this.conversationTree;
 
@@ -1180,23 +1184,24 @@
                 // 检查是否包含用户消息或Claude响应内容
                 const hasUserMessage = !!el.querySelector('[data-testid="user-message"]');
                 const hasClaudeResponse = !!el.querySelector('.font-claude-response');
+                const hasFileThumbnail = !!el.querySelector('[data-testid="file-thumbnail"]');
 
-                // 必须是用户消息或Claude响应之一
-                return hasUserMessage || hasClaudeResponse;
+                // 必须是用户消息、Claude响应或纯文件用户消息之一
+                return hasUserMessage || hasClaudeResponse || hasFileThumbnail;
             });
 
             return validElements;
         },
 
         extractSiblingInfo(turnElement) {
-            // 查找关键定位元素：<span class="self-center shrink-0 select-none font-small text-text-300">a / b</span>
+            // 查找关键定位元素：<span class="self-center shrink-0 select-none font-small text-text-xxx">a / b</span>
             // 其中 b 代表包括自己在内总共有多少个兄弟节点，a 代表自己处于兄弟节点的第几个（1基索引）
 
-            // 精确的类名匹配
-            let siblingSpan = turnElement.querySelector('span.self-center.shrink-0.select-none.font-small.text-text-300');
+            // 使用核心布局类名匹配，不依赖颜色类名（text-text-300 或 text-text-500）
+            const siblingSpans = turnElement.querySelectorAll('span.self-center.shrink-0.select-none.font-small');
 
-            if (siblingSpan) {
-                const text = siblingSpan.textContent?.trim();
+            for (const span of siblingSpans) {
+                const text = span.textContent?.trim();
                 const match = text.match(/(\d+)\s*\/\s*(\d+)/);
                 if (match) {
                     const currentPosition = parseInt(match[1]); // 1基索引位置
@@ -1641,10 +1646,12 @@
         },
 
         detectRole(turnElement) {
-            const isUser = !!turnElement.querySelector('[data-testid="user-message"]');
+            const hasUserMessage = !!turnElement.querySelector('[data-testid="user-message"]');
+            const hasFileThumbnail = !!turnElement.querySelector('[data-testid="file-thumbnail"]');
             const isAssistant = !!turnElement.querySelector('.font-claude-response');
 
-            if (isUser) return 'user';
+            // 用户节点：有用户消息，或者有文件但没有Claude响应
+            if (hasUserMessage || (hasFileThumbnail && !isAssistant)) return 'user';
             if (isAssistant) return 'assistant';
             return null;
         },
@@ -2080,16 +2087,16 @@
                 for (let i = 0; i < allAttachments.length; i++) {
                     const file = allAttachments[i];
                     let fileName;
-                    
+
                     // 双分割策略处理文件名
                     let extensionForCheck; // 用于检查的部分 (最后一个点)
                     let baseNameForRestore, extensionForRestore; // 用于还原的部分 (第一个点)
-                    
+
                     if (file.file_name && file.file_name.includes('.')) {
                         // 按最后一个点分割 - 用于检查扩展名类型
                         const lastDotIndex = file.file_name.lastIndexOf('.');
                         extensionForCheck = file.file_name.substring(lastDotIndex);
-                        
+
                         // 按第一个点分割 - 用于还原完整扩展名
                         const firstDotIndex = file.file_name.indexOf('.');
                         baseNameForRestore = file.file_name.substring(0, firstDotIndex);
@@ -2103,7 +2110,7 @@
                     if (file.type === 'text') {
                         // 统一使用第一个点分割的结果构造文件名
                         fileName = `${baseNameForRestore}_[${file.id || 'no-id'}]${extensionForRestore}`;
-                        
+
                         // 对于以下列表中的文件类型，添加.txt后缀
                         if (extensionForCheck && (
                             Config.ContentExtractorHandler.includes(extensionForCheck.toLowerCase()) ||
@@ -3275,7 +3282,7 @@
             button.id = 'cpm-branch-btn';
             button.type = 'button';
             button.title = t('tooltip.navigatorButton');
-            button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
+            button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 w-8 rounded-md active:scale-95 !rounded-lg hover:!bg-bg-200 active:!scale-100 !pointer-events-auto !outline-offset-1 text-text-300";
             button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-tree"></use></svg></div>`;
             button.onclick = () => this.showModal();
             wrapperDiv.appendChild(button);
@@ -3442,7 +3449,7 @@
             button.id = 'cpm-ln-linear-navigator-btn';
             button.type = 'button';
             button.title = t('tooltip.linearNavButton');
-            button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100";
+            button.className = "inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:shadow-none disabled:drop-shadow-none border border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 w-8 rounded-md active:scale-95 !rounded-lg hover:!bg-bg-200 active:!scale-100 !pointer-events-auto !outline-offset-1 text-text-300";
             button.style.fontWeight = "normal";
             button.innerHTML = `<div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px;"><use href="#cpm-ln-icon-linear-navigator"></use></svg></div>`;
             button.onclick = () => this.toggleLinearNavigator();
@@ -3661,7 +3668,7 @@
             const wrapperDiv = document.createElement('div');
             wrapperDiv.className = "relative shrink-0";
             wrapperDiv.innerHTML = `
-                <button class="inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-0.5 transition-all h-8 min-w-8 rounded-lg flex items-center px-[7.5px] group !pointer-events-auto !outline-offset-1 text-text-300 border-border-300 active:scale-[0.98] hover:text-text-200/90 hover:bg-bg-100" type="button" id="cpm-attachment-power-btn" aria-label="${t('tooltip.pdfButton')}" title="${t('tooltip.pdfButton')}">
+                <button class="inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 w-8 rounded-md active:scale-95 !rounded-lg hover:!bg-bg-200 active:!scale-100 !pointer-events-auto !outline-offset-1 text-text-300" type="button" id="cpm-attachment-power-btn" aria-label="${t('tooltip.pdfButton')}" title="${t('tooltip.pdfButton')}">
                     <div class="flex flex-row items-center justify-center gap-1"><svg class="cpm-svg-icon" style="width:16px; height:16px; stroke-width:1.8;"><use href="#cpm-icon-attachment"></use></svg></div>
                 </button>
                 <div class="w-[24rem] absolute max-w-[calc(100vw-16px)] bottom-10 block hidden" id="cpm-attachment-power-menu">
