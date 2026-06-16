@@ -950,36 +950,41 @@
                 childrenMap[parentUuid].sort((a, b) => new Date(nodesCopy[a].created_at) - new Date(nodesCopy[b].created_at));
             }
 
-            function assignIdsRecursive(nodeUuid, prefix) {
-                if (!nodesCopy[nodeUuid]) return;
-                const node = nodesCopy[nodeUuid];
-                // 在副本上添加 tree_id
-                node.tree_id = prefix;
+            // 迭代版：用显式栈替代递归，避免在长会话上爆栈 (Maximum call stack size exceeded)
+            function assignIdsIterative(rootUuid, rootPrefix) {
+                if (!nodesCopy[rootUuid]) return;
+                const stack = [[rootUuid, rootPrefix]];
+                while (stack.length > 0) {
+                    const [nodeUuid, prefix] = stack.pop();
+                    const node = nodesCopy[nodeUuid];
+                    if (!node) continue;
+                    node.tree_id = prefix;
 
-                const children = childrenMap[nodeUuid] || [];
-                let normalIndex = 0;
-                let dirtyCount = 1;
-
-                children.forEach((childUuid) => {
-                    const childNode = nodesCopy[childUuid];
-                    if (!childNode) return;
-
-                    // 检测脏数据：标记了 _isDirtyData 的节点
-                    const isDirtyData = childNode._isDirtyData;
-
-                    if (isDirtyData) {
-                        assignIdsRecursive(childUuid, `${prefix}-F${dirtyCount}`);
-                        dirtyCount++;
-                    } else {
-                        assignIdsRecursive(childUuid, `${prefix}-${normalIndex}`);
-                        normalIndex++;
+                    const children = childrenMap[nodeUuid] || [];
+                    let normalIndex = 0;
+                    let dirtyCount = 1;
+                    const childEntries = [];
+                    for (const childUuid of children) {
+                        const childNode = nodesCopy[childUuid];
+                        if (!childNode) continue;
+                        if (childNode._isDirtyData) {
+                            childEntries.push([childUuid, `${prefix}-F${dirtyCount}`]);
+                            dirtyCount++;
+                        } else {
+                            childEntries.push([childUuid, `${prefix}-${normalIndex}`]);
+                            normalIndex++;
+                        }
                     }
-                });
+                    // 逆序入栈，保证 pop 顺序与原递归的 forEach 一致（深度优先、左到右）
+                    for (let i = childEntries.length - 1; i >= 0; i--) {
+                        stack.push(childEntries[i]);
+                    }
+                }
             }
 
             const rootNodes = childrenMap[Config.INITIAL_PARENT_UUID] || [];
             rootNodes.forEach((rootUuid, index) => {
-                assignIdsRecursive(rootUuid, `root-${index}`);
+                assignIdsIterative(rootUuid, `root-${index}`);
             });
 
             return { nodes: nodesCopy, childrenMap, rootNodes };
@@ -1943,7 +1948,7 @@
             const orgUuid = await ClaudeAPI.getOrgUuid();
             const baseUrl = window.location.origin;
 
-            const renderNodeRecursive = (nodeUuid, indentLevel) => {
+            const renderNode = (nodeUuid, indentLevel) => {
                 const node = nodes[nodeUuid];
                 if (!node) return;
 
@@ -2049,9 +2054,21 @@
                 }
 
                 container.appendChild(nodeElement);
-                (childrenMap[nodeUuid] || []).forEach(childUuid => renderNodeRecursive(childUuid, indentLevel + 1));
             };
-            rootNodes.forEach(rootUuid => renderNodeRecursive(rootUuid, 0));
+            // 迭代版深度优先遍历：用显式栈替代递归，避免在长会话上爆栈
+            const stack = [];
+            for (let i = rootNodes.length - 1; i >= 0; i--) {
+                stack.push([rootNodes[i], 0]);
+            }
+            while (stack.length > 0) {
+                const [nodeUuid, indentLevel] = stack.pop();
+                renderNode(nodeUuid, indentLevel);
+                const children = childrenMap[nodeUuid] || [];
+                // 逆序入栈，保证 pop 顺序与原递归的 forEach 一致（深度优先、左到右）
+                for (let i = children.length - 1; i >= 0; i--) {
+                    stack.push([children[i], indentLevel + 1]);
+                }
+            }
         }
     };
 
